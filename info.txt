@@ -1,0 +1,3 @@
+password Cluster-Costify = GNYAn7nLIn4L6CKp
+
+mongodb+srv://sebastiangarea:GNYAn7nLIn4L6CKp@costify-cluster.txzshpg.mongodb.net/?retryWrites=true&w=majority&appName=Costify-Cluster
