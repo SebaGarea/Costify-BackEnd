@@ -3,7 +3,7 @@ import MateriaPrimaController from '../controllers/materiaPrima.controller.js';
 
 
 
-export const router=Router()
+export const router=Router();
 
 router.get('/', MateriaPrimaController.getAll);
 router.get('/:id', MateriaPrimaController.getById); 
