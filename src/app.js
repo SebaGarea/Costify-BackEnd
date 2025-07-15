@@ -5,6 +5,7 @@ import { config } from './config/config.js';
 
 import { router as materiasPrimasRouter } from './routes/materiasPrimasRouter.js';
 import { router as plantillaCostoRouter } from './routes/plantillaCostoRouter.js';
+import { router as productoRouter } from './routes/productoRouter.js';
 
 const app=express();
 
@@ -14,6 +15,7 @@ app.use(express.urlencoded({extended:true}));
 
 app.use('/api/materiasPrimas', materiasPrimasRouter);
 app.use('/api/plantillas', plantillaCostoRouter);
+app.use('/api/productos', productoRouter);
 
 const startServer = async () => {
     try {
