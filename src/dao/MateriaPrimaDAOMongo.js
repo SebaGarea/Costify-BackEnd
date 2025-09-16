@@ -71,6 +71,16 @@ export class MateriaPrimaDAOMongo {
         }
     }
 
+    static async getAllCategories() {
+        try {
+            let categorias = await MateriaPrimaModel.distinct("categoria");
+            return categorias;
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Error al obtener categorías: ${error.message}`);
+        }
+    }
+
     static async getByType(type) {
         try {
             let materiasPrimas = await MateriaPrimaModel.find({ type: type }).lean();

@@ -156,6 +156,23 @@ export default class MateriaPrimaController {
     }
   }
 
+  static async getAllCategories(req, res) {
+  try {
+    const categorias = await materiaPrimaService.getAllCategories();
+    // Transformar a array de objetos con propiedad nombre
+    const categoriasObj = categorias.map(nombre => ({ nombre }));
+    return res.json({
+      status: "success",
+      categorias: categoriasObj,
+    });
+  } catch (error) {
+    console.error("Error al obtener categorías:", error);
+    return res.status(500).json({
+      status: "error",
+      error: "Error al obtener categorías",
+    });
+  }
+}
 
 static async getByType(req, res) {
     try {

@@ -8,13 +8,19 @@
     "dev": "nodemon src/app.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Seba Garea",
+  "license": "MIT",
+  "description": "Backend para gestión de costos de fabricación de productos. Proyecto en desarrollo.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SebaGarea/Costify-App.git"
+  },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "mongoose": "^8.16.3"
+    "mongoose": "^8.16.3",
+    "multer": "^2.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

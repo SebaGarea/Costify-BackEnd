@@ -19,7 +19,7 @@ const PlantillaCostoSchema = new Schema({
   },
   costoTotal: { type: Number, default: 0 },
   precioFinal: { type: Number, default: 0 },
-  ganancia: { type: Number, default: 0 } // <-- Nuevo campo
+  ganancia: { type: Number, default: 0 } 
 }, { timestamps: true });
 
 export const PlantillaCostoModel = mongoose.model('PlantillaCosto', PlantillaCostoSchema);

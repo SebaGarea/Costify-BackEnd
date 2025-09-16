@@ -30,6 +30,11 @@ class MateriaPrimaService {
         return await this.MateriaPrimaDao.getByCategory(category);
     }
 
+
+    async getAllCategories() {
+        return await this.MateriaPrimaDao.getAllCategories();
+    }
+
     async getMateriaPrimasByType(type) {
         return await this.MateriaPrimaDao.getByType(type);
     }

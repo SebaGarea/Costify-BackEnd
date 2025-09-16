@@ -17,6 +17,13 @@ class ProductoService {
     return await this.dao.getById(id);
   }
 
+  async getProductByCatalogo(catalogo){
+    return await this.dao.getByCatalogo(catalogo);
+  }
+  async getProductByModelo(modelo){
+    return await this.dao.getByModelo(modelo);
+  }
+
   async updateProducto(id, data) {
     return await this.dao.update(id, data);
   }

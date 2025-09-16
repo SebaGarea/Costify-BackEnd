@@ -4,10 +4,15 @@ const { Schema } = mongoose;
 const ProductoSchema = new Schema({
   nombre: { type: String, required: true },
   descripcion: { type: String },
-  planillaCosto: { type: Schema.Types.ObjectId, ref: 'PlantillaCosto', required: true }, // Relación con la planilla de costos
+  planillaCosto: { type: Schema.Types.ObjectId, ref: 'PlantillaCosto', required: false, unique:true }, // Relación con la planilla de costos
   imagenes: [{ type: String }], // URLs de imágenes en la nube
-  catalogo: { type: String }, // Ej: "Muebles", "Sillas", "Mesas", etc.
-  activo: { type: Boolean, default: true }
+  catalogo: { type: String, required: true, set: v => v.toLowerCase() }, // Ej: "Muebles", "Sillas", "Mesas", etc.
+  modelo: { type: String, required: true, set: v => v.toLowerCase() }, // Nuevo campo para el modelo
+  activo: { type: Boolean, default: true },
+  precio: { type: Number, required: true },
+  stock:{type:Number, default: 0} // Nuevo campo para el stock del producto
 }, { timestamps: true });
 
 export const ProductoModel = mongoose.model('Producto', ProductoSchema);
+
+

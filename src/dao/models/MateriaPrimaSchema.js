@@ -14,3 +14,14 @@ const MateriaPrimaSchema = new Schema({
 })
 
 export const MateriaPrimaModel = mongoose.model('MateriaPrimaCollection', MateriaPrimaSchema);
+
+
+
+// Modificacion para el type que acepte solo algunos valores
+
+// type: {
+//   type: String,
+//   required: true,
+//   enum: ["cuadrado", "redondo", "bisagras", "tornillos"],
+//   set: v => v.toLowerCase()
+// },
