@@ -3,6 +3,7 @@ node_modules/
 
 # Archivos de entorno
 .env*
+info.txt
 
 # Logs
 logs/
