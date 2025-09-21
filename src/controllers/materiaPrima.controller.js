@@ -109,6 +109,13 @@ export default class MateriaPrimaController {
     try {
       const { id } = req.params;
 
+      if(!id){
+        return res.status(400).json({
+          status: "error",
+          error: "ID de Materia Prima es requerido",
+        });
+      }
+
       const deletedMateriaPrima = await materiaPrimaService.deleteMateriaPrima(id);
 
       if (!deletedMateriaPrima) {
