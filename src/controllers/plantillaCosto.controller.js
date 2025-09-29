@@ -15,7 +15,25 @@ export const plantillaCostoController = {
   // Obtener todas las plantillas
   async getAll(req, res) {
     try {
-      const plantillas = await plantillaCostoService.getAllPlantillas();
+      const { categoria, tipoProyecto, search } = req.query;
+      const filtros = {};
+      
+      if (categoria && categoria !== 'todas') {
+        filtros.categoria = categoria;
+      }
+      
+      if (tipoProyecto && tipoProyecto !== 'todos') {
+        filtros.tipoProyecto = tipoProyecto;
+      }
+      
+      if (search) {
+        filtros.$or = [
+          { nombre: { $regex: search, $options: 'i' } },
+          { tags: { $in: [new RegExp(search, 'i')] } }
+        ];
+      }
+      
+      const plantillas = await plantillaCostoService.getAllPlantillas(filtros);
       res.json(plantillas);
     } catch (error) {
       res.status(500).json({ error: error.message });

@@ -7,39 +7,95 @@ class PlantillaCostoService {
     this.dao = dao;
   }
 
-  // Calcula el costo total y el precio final de la plantilla
-  async calcularCostos(items, porcentajesPorCategoria) {
-  let costoTotal = 0;
-  let precioFinal = 0;
-  const subtotales = {};
-
-  // Calcular subtotales por categoría
-  for (const item of items) {
-    const materia = await MateriaPrimaModel.findById(item.materiaPrima);
-    if (materia) {
-      const subtotal = materia.precio * item.cantidad;
-      costoTotal += subtotal;
-      if (!subtotales[item.categoria]) subtotales[item.categoria] = 0;
-      subtotales[item.categoria] += subtotal;
+  // Determinar categoría principal basándose en los items
+  determinarCategoria(subtotales) {
+    if (!subtotales || Object.keys(subtotales).length === 0) return 'Otro';
+    
+    // Encontrar la categoría con mayor subtotal
+    let categoriaPrincipal = '';
+    let mayorSubtotal = 0;
+    let totalCategorias = 0;
+    
+    for (const categoria in subtotales) {
+      const subtotal = subtotales[categoria] || 0;
+      if (subtotal > mayorSubtotal) {
+        mayorSubtotal = subtotal;
+        categoriaPrincipal = categoria;
+      }
+      if (subtotal > 0) totalCategorias++;
     }
-  }
-    // Aplicar porcentaje de ganancia por categoría
-  for (const categoria in subtotales) {
-    const porcentaje = porcentajesPorCategoria[categoria] || 0;
-    precioFinal += subtotales[categoria] * (1 + porcentaje / 100);
+    
+    // Si hay más de 2 categorías significativas, es "Mixta"
+    if (totalCategorias > 2) return 'Mixta';
+    
+    // Si el mayor subtotal no es dominante (menos del 70%), es "Mixta"
+    const totalSubtotales = Object.values(subtotales).reduce((sum, val) => sum + (val || 0), 0);
+    if (totalSubtotales > 0 && (mayorSubtotal / totalSubtotales) < 0.7 && totalCategorias > 1) {
+      return 'Mixta';
+    }
+    
+    // Mapear categorías internas a categorías del schema
+    const mapeoCategoria = {
+      'herreria': 'Herrería',
+      'carpinteria': 'Carpintería', 
+      'pintura': 'Pintura'
+    };
+    
+    return mapeoCategoria[categoriaPrincipal.toLowerCase()] || 'Mixta';
   }
 
-  return { costoTotal, precioFinal, subtotales };
-}
+  // Calcula el costo total y el precio final de la plantilla
+  async calcularCostos(items, porcentajesPorCategoria, consumibles = {}) {
+    let costoTotal = 0;
+    let precioFinal = 0;
+    const subtotales = {};
+
+    // Calcular subtotales por categoría (materiales)
+    for (const item of items) {
+      const materiaPrima = await MateriaPrimaModel.findById(item.materiaPrima);
+      if (materiaPrima) {
+        const subtotal = materiaPrima.precio * item.cantidad;
+        costoTotal += subtotal;
+        if (!subtotales[item.categoria]) subtotales[item.categoria] = 0;
+        subtotales[item.categoria] += subtotal;
+      }
+    }
+
+    // Agregar consumibles a subtotales por categoría
+    for (const categoria in consumibles) {
+      const valorConsumible = parseFloat(consumibles[categoria]) || 0;
+      if (valorConsumible > 0) {
+        if (!subtotales[categoria]) subtotales[categoria] = 0;
+        subtotales[categoria] += valorConsumible;
+        costoTotal += valorConsumible;
+      }
+    }
+
+    // Aplicar porcentaje de ganancia por categoría
+    for (const categoria in subtotales) {
+      const porcentaje = porcentajesPorCategoria[categoria] || 0;
+      precioFinal += subtotales[categoria] * (1 + porcentaje / 100);
+    }
+
+    return { costoTotal, precioFinal, subtotales };
+  }
 
   async createPlantilla(data) {
-    const { items, porcentajesPorCategoria, nombre } = data;
-    const { costoTotal, precioFinal, subtotales } = await this.calcularCostos(items, porcentajesPorCategoria);
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags } = data;
+    const { costoTotal, precioFinal, subtotales } = await this.calcularCostos(items, porcentajesPorCategoria, consumibles);
     const ganancia = precioFinal - costoTotal; // Calcular ganancia
+    
+    // Determinar categoría automáticamente si no se proporciona
+    const categoriaFinal = categoria || this.determinarCategoria(subtotales);
+    
     return await this.dao.create({
       nombre,
       items,
+      categoria: categoriaFinal,
+      tipoProyecto: tipoProyecto || 'Otro',
+      tags: tags || [],
       porcentajesPorCategoria,
+      consumibles,
       costoTotal,
       subtotales,
       precioFinal,
@@ -48,8 +104,8 @@ class PlantillaCostoService {
   }
 
   // Obtener todas las plantillas
-  async getAllPlantillas() {
-    return await this.dao.getAll();
+  async getAllPlantillas(filtros = {}) {
+    return await this.dao.getAll(filtros);
   }
 
   // Obtener una plantilla por ID
@@ -59,14 +115,25 @@ class PlantillaCostoService {
 
   // Actualizar una plantilla existente
   async updatePlantilla(id, data) {
-    const { items, porcentajeGanancia, nombre } = data;
-    const { costoTotal, precioFinal } = await this.calcularCostos(items, porcentajeGanancia);
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags } = data;
+    const { costoTotal, precioFinal, subtotales } = await this.calcularCostos(items, porcentajesPorCategoria, consumibles);
+    const ganancia = precioFinal - costoTotal; // Calcular ganancia
+    
+    // Determinar categoría automática si no se proporciona
+    const categoriaFinal = categoria || this.determinarCategoria(subtotales);
+    
     return await this.dao.update(id, {
       nombre,
       items,
-      porcentajeGanancia,
+      porcentajesPorCategoria,
+      consumibles,
       costoTotal,
-      precioFinal
+      subtotales,
+      precioFinal,
+      ganancia,
+      categoria: categoriaFinal,
+      tipoProyecto: tipoProyecto || 'Otro',
+      tags: tags || []
     });
   }
 

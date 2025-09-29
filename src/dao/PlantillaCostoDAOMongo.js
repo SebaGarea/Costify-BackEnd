@@ -5,8 +5,8 @@ export class PlantillaCostoDAOMongo {
     return await PlantillaCostoModel.create(data);
   }
 
-  static async getAll() {
-    return await PlantillaCostoModel.find().populate('items.materiaPrima').lean();
+  static async getAll(filtros = {}) {
+    return await PlantillaCostoModel.find(filtros).populate('items.materiaPrima').lean();
   }
 
   static async getById(id) {
