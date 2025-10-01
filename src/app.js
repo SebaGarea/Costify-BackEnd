@@ -6,6 +6,7 @@ import cors from 'cors';
 import { router as materiasPrimasRouter } from './routes/materiasPrimasRouter.js';
 import { router as plantillaCostoRouter } from './routes/plantillaCostoRouter.js';
 import { router as productoRouter } from './routes/productoRouter.js';
+import { router as ventasRouter } from './routes/ventasRouter.js';
 
 
 const app=express();
@@ -22,6 +23,7 @@ app.use(cors({
 app.use('/api/materiasPrimas', materiasPrimasRouter);
 app.use('/api/plantillas', plantillaCostoRouter);
 app.use('/api/productos', productoRouter);
+app.use('/api/ventas', ventasRouter);
 
 const startServer = async () => {
     try {
