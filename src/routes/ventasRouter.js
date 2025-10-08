@@ -8,4 +8,4 @@ router.get("/:id", ventasController.getVentaById);
 router.put("/:id", ventasController.updateVenta);
 router.delete("/:id", ventasController.deleteVenta);
 router.get("/cliente/:clienteId", ventasController.getVentasByCliente);
-router.get("/producto/:productoId", ventasController.getVentasByEstado);
+router.get("/estado/:estado", ventasController.getVentasByEstado);

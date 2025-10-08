@@ -6,11 +6,17 @@ export class VentasDAOMongo {
   }
 
   static async getAll() {
-    return await VentasModel.find().lean();
+    return await VentasModel.find().populate({
+      path: 'producto',
+      populate: { path: 'planillaCosto' }
+    }).lean();
   }
 
   static async getById(id) {
-    return await VentasModel.findById(id).lean();
+    return await VentasModel.findById(id).populate({
+      path: 'producto',
+      populate: { path: 'planillaCosto' }
+    }).lean();
   }
 
   static async update(id, ventasData) {
