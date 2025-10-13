@@ -3,6 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const VentasSchema = new Schema(
   {
     fecha: { type: Date, default: Date.now },
+    fechaLimite: { type: Date, default: null },
     cliente: { type: String, required: true },
     medio: { type: String, required: true },
     producto: {
@@ -28,9 +29,10 @@ const VentasSchema = new Schema(
     restan: { type: Number, required: true },
     estado: {
       type: String,
-      enum: ["pendiente", "en_proceso", "finalizada", "cancelada"],
+      enum: ["pendiente", "en_proceso", "finalizada", "despachada", "cancelada"],
       default: "pendiente",
     },
+    enProcesoAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -40,5 +42,6 @@ VentasSchema.index({ fecha: -1 });
 VentasSchema.index({ cliente: 1, fecha: -1, createdAt: -1 });
 VentasSchema.index({ estado: 1, fecha: -1, createdAt: -1 });
 VentasSchema.index({ createdAt: -1 });
+VentasSchema.index({ fechaLimite: 1 });
 
 export const VentasModel = mongoose.model("Ventas", VentasSchema);
