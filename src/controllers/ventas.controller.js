@@ -12,6 +12,14 @@ export const ventasController = {
 
   async getAllVentas(req, res) {
     try {
+      const page = Math.max(1, parseInt(req.query.page || '1', 10));
+      const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
+      // Si trae parámetros de paginación, devolver paginado
+      if (req.query.page || req.query.limit) {
+        const result = await ventasService.getAllVentasPaginated(page, limit);
+        return res.json(result);
+      }
+      // Compat: respuesta completa sin paginar
       const ventas = await ventasService.getAllVentas();
       res.json(ventas);
     } catch (error) {
@@ -42,8 +50,10 @@ export const ventasController = {
   async deleteVenta(req, res) {
     try {
       const venta = await ventasService.deleteVenta(req.params.id);
-      if (!venta) return res.status(404).json({ error: "Venta no encontrada" });
-      res.json({ message: "Venta eliminada" });
+      if (!venta) return res.status(404).json({ error: "Venta no encontrada", ID: req.params.id,  });
+      res.json({
+        message: `Venta eliminada, ID: ${req.params.id}`,
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

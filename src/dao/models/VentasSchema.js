@@ -21,8 +21,7 @@ const VentasSchema = new Schema(
       required: false, // Puede ser opcional si no siempre hay plantilla asociada
     },
     cantidad: { type: Number, required: true },
-    descripcion: { type: String },
-    descripcionVenta: { type: String },
+  descripcion: { type: String },
     valorEnvio: { type: Number, default: 0 },
     valorTotal: { type: Number, required: true },
     seña: { type: Number, default: 0 },
@@ -35,5 +34,11 @@ const VentasSchema = new Schema(
   },
   { timestamps: true }
 );
+
+// Índices para mejorar rendimiento en ordenamientos y filtros más comunes
+VentasSchema.index({ fecha: -1 });
+VentasSchema.index({ cliente: 1, fecha: -1, createdAt: -1 });
+VentasSchema.index({ estado: 1, fecha: -1, createdAt: -1 });
+VentasSchema.index({ createdAt: -1 });
 
 export const VentasModel = mongoose.model("Ventas", VentasSchema);

@@ -6,10 +6,24 @@ export class VentasDAOMongo {
   }
 
   static async getAll() {
-    return await VentasModel.find().populate({
+    return await VentasModel.find().sort({ createdAt: -1, fecha: -1, _id: -1 }).populate({
       path: 'producto',
       populate: { path: 'planillaCosto' }
     }).lean();
+  }
+  static async getAllPaginated(page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      VentasModel.find()
+        .sort({ createdAt: -1, fecha: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: 'producto', populate: { path: 'planillaCosto' } })
+        .lean(),
+      VentasModel.countDocuments({})
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return { items, total, page, limit, totalPages };
   }
 
   static async getById(id) {
@@ -30,10 +44,10 @@ export class VentasDAOMongo {
   }
 
   static async getByCliente(cliente) {
-    return await VentasModel.find({ cliente: cliente }).lean();
+    return await VentasModel.find({ cliente: cliente }).sort({ createdAt: -1, fecha: -1, _id: -1 }).lean();
   }
 
   static async getByEstado(estado) {
-    return await VentasModel.find({ estado: estado }).lean();
+    return await VentasModel.find({ estado: estado }).sort({ createdAt: -1, fecha: -1, _id: -1 }).lean();
   }
 }
