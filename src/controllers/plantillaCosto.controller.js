@@ -1,8 +1,8 @@
 import { plantillaCostoService } from '../services/plantillaCosto.service.js';
 
-// Controlador para manejar las peticiones HTTP de plantillas de costos
+
 export const plantillaCostoController = {
-  // Crear una nueva plantilla
+  
   async create(req, res) {
     try {
       const plantilla = await plantillaCostoService.createPlantilla(req.body);
@@ -11,8 +11,7 @@ export const plantillaCostoController = {
       res.status(400).json({ error: error.message });
     }
   },
-
-  // Obtener todas las plantillas
+  
   async getAll(req, res) {
     try {
       const { categoria, tipoProyecto, search } = req.query;
@@ -40,7 +39,6 @@ export const plantillaCostoController = {
     }
   },
 
-  // Obtener una plantilla por ID
   async getById(req, res) {
     try {
       const plantilla = await plantillaCostoService.getPlantillaById(req.params.id);
@@ -51,7 +49,6 @@ export const plantillaCostoController = {
     }
   },
 
-  // Actualizar una plantilla por ID
   async update(req, res) {
     try {
       const plantilla = await plantillaCostoService.updatePlantilla(req.params.id, req.body);
@@ -62,7 +59,6 @@ export const plantillaCostoController = {
     }
   },
 
-  // Eliminar una plantilla por ID
   async delete(req, res) {
     try {
       const plantilla = await plantillaCostoService.deletePlantilla(req.params.id);
