@@ -2,8 +2,8 @@ export class UsuarioDTO{
     constructor(usuario){
         this.nombre_completo = `${usuario.first_name} ${usuario.last_name}`;
         this.email = usuario.email;
-        this.age = usuario.age;
         this.rol = usuario.role;
+        // this._id = usuario._id;
         
     }
 

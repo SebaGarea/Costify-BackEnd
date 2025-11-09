@@ -1,5 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
+import passport from "passport";
+import{ iniciarPassport } from "./config/passport.config.js";
 import { config } from "./config/config.js";
 import cors from "cors";
 
@@ -15,6 +17,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+iniciarPassport();
+app.use(passport.initialize());
 
 app.use("/uploads", express.static("uploads"));
 

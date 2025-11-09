@@ -15,10 +15,6 @@ export const usuariosModelo = mongoose.model('users', new mongoose.Schema({
         required: true,
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Email inválido']
     },
-    age: {
-        type: Number,
-        required: true
-    },
     password: {
         type: String,
         required: true

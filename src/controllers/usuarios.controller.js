@@ -1,6 +1,9 @@
 import { isValidObjectId } from "mongoose";
 import { usuariosService } from "../services/usuarios.service.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 export default class UsuariosController {
   static async getUsuarios(req, res) {
@@ -13,7 +16,6 @@ export default class UsuariosController {
         status: "succes",
         usuarios: usuariosDTO,
       });
-
     } catch (error) {
       res.setHeader("Content-Type", "application/json");
       return res
@@ -31,7 +33,6 @@ export default class UsuariosController {
 
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
-      
     } catch (error) {
       res.setHeader("Content-Type", "application/json");
       return res.status(500).json({ error: `${error.message}` });
@@ -40,7 +41,7 @@ export default class UsuariosController {
 
   static async updateUsuario(req, res) {
     let { id } = req.params;
-    let { first_name, last_name, email, age, password } = req.body;
+    let { first_name, last_name, email, role, age, password } = req.body;
 
     if (!isValidObjectId(id)) {
       res.setHeader("Content-Type", "application/json");
@@ -53,6 +54,7 @@ export default class UsuariosController {
         email,
         age,
         password,
+        role
       });
       if (!usuarioActualizado) {
         res.setHeader("Content-Type", "application/json");
@@ -62,7 +64,6 @@ export default class UsuariosController {
       }
 
       let usuarioDTO = UsuarioDTO.fromObject(usuarioActualizado);
-
 
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({
@@ -77,24 +78,42 @@ export default class UsuariosController {
     }
   }
 
-  static async deleteUsuario(req, res){
-    let {id} = req.params;
+  static async deleteUsuario(req, res) {
+    let { id } = req.params;
     try {
       let usuario = await usuariosService.delete(id);
-      let usuarioDTO = UsuarioDTO.fromObject(usuario)
+      let usuarioDTO = UsuarioDTO.fromObject(usuario);
 
-      res.setHeader('Content-Type','application/json');
-      return res.status(200).json({payload:"succes", usuario:usuarioDTO});
+      res.setHeader("Content-Type", "application/json");
+      return res.status(200).json({ payload: "succes", usuario: usuarioDTO });
     } catch (error) {
       console.log(error);
-      res.setHeader('Content-Type','application/json');
-      return res.status(500).json(
-        {
-          error:`Error al eliminar al Usuario en el Controller`,
-          detalle:`${error.message}`
-        }
-      )
-      
+      res.setHeader("Content-Type", "application/json");
+      return res.status(500).json({
+        error: `Error al eliminar al Usuario en el Controller`,
+        detalle: `${error.message}`,
+      });
     }
   }
+
+  static async loginUsuario(req, res) {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.json({ mensaje: "Login local exitoso", token, usuario: req.user });
+  }
+
+  static async loginGoogleCallback(req, res) {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.json({ mensaje: "Login con Google exitoso", token, usuario: req.user });
+  }
+
+  static async registroUsuario(req, res) {
+  const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+    expiresIn: "1h",
+  });
+  res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
+}
 }
