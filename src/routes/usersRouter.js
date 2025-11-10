@@ -25,6 +25,11 @@ router.post(
 );
 
 router.get(
+  "/current",passport.authenticate("jwt", { session: false }),
+  UsuariosController.currentUsuario
+);
+
+router.get(
   "/",
   passport.authenticate("jwt", { session: false }),
   UsuariosController.getUsuarios

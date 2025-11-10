@@ -2,10 +2,10 @@ import { Router } from 'express';
 import { productoController } from '../controllers/producto.controller.js';
 import multer from 'multer';
 import passport from "passport";
-// Configuración de Multer
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Carpeta donde se guardan las imágenes
+    cb(null, 'uploads/'); 
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);

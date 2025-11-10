@@ -4,6 +4,7 @@ node_modules/
 # Archivos de entorno
 .env*
 info.txt
+Tareas.txt
 
 # Logs
 logs/

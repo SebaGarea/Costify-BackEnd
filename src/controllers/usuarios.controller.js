@@ -55,7 +55,7 @@ export default class UsuariosController {
         email,
         age,
         password,
-        role
+        role,
       });
       if (!usuarioActualizado) {
         res.setHeader("Content-Type", "application/json");
@@ -125,29 +125,41 @@ export default class UsuariosController {
   }
 
   static async registroUsuario(req, res) {
-  const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
-  });
-  res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
-}
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
+  }
 
   static async setPassword(req, res) {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ error: "Email y nueva contraseña requeridos" });
+      return res
+        .status(400)
+        .json({ error: "Email y nueva contraseña requeridos" });
     }
     try {
       let usuario = await usuariosService.usuariosDAO.getBy({ email });
       if (!usuario) {
         return res.status(404).json({ error: "Usuario no encontrado" });
       }
-      
+
       const { generaHash } = await import("../config/config.js");
       const passwordHash = generaHash(password);
-      await usuariosService.usuariosDAO.update(usuario._id, { password: passwordHash });
-      return res.status(200).json({ mensaje: "Contraseña actualizada correctamente" });
+      await usuariosService.usuariosDAO.update(usuario._id, {
+        password: passwordHash,
+      });
+      return res
+        .status(200)
+        .json({ mensaje: "Contraseña actualizada correctamente" });
     } catch (error) {
-      return res.status(500).json({ error: `Error al actualizar contraseña: ${error.message}` });
+      return res
+        .status(500)
+        .json({ error: `Error al actualizar contraseña: ${error.message}` });
     }
+  }
+
+  static async currentUsuario(req, res) {
+    res.status(200).json({ usuario: req.user });
   }
 }
