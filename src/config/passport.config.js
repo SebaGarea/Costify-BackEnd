@@ -1,13 +1,22 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { usuariosModelo } from "../dao/models/UserSchema.js";
-import bcrypt from "bcrypt";
+import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import { UserDaoMongo } from "../dao/UserDAOMongo.js";
 import { generaHash, validaHash } from "./config.js";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const jwtOptions = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: process.env.JWT_SECRET,
+};
 
 export const iniciarPassport = () => {
-  passport.use("registro",
+  passport.use(
+    "registro",
     new LocalStrategy(
       { usernameField: "email", passReqToCallback: true },
       async (req, username, password, done) => {
@@ -39,59 +48,80 @@ export const iniciarPassport = () => {
     )
   );
 
-  passport.use("login",
+  passport.use(
+    "login",
     new LocalStrategy(
       { usernameField: "email" },
       async (username, password, done) => {
         try {
-            const usuario = await UserDaoMongo.getBy({ email: username });
-            if (!usuario) {
-              console.error("Usuario no encontrado");
-              return done(null, false);
-            }
-            if (!validaHash(password, usuario.password)) {
-              console.error("Contraseña incorrecta");
-              return done(null, false);
-            }
-            return done(null, usuario);
+          const usuario = await UserDaoMongo.getBy({ email: username });
+          if (!usuario) {
+            console.error("Usuario no encontrado");
+            return done(null, false);
+          }
+          if (!validaHash(password, usuario.password)) {
+            console.error("Contraseña incorrecta");
+            return done(null, false);
+          }
+          return done(null, usuario);
         } catch (error) {
-            console.log("Error en la estrategia de login:", error);
-            return done(error);
+          console.log("Error en la estrategia de login:", error);
+          return done(error);
         }
       }
     )
   );
 
-  passport.use("google", new GoogleStrategy({
-    clientID: "TU_CLIENT_ID", // Coloca tu clientID de Google
-    clientSecret: "TU_CLIENT_SECRET",
-    callbackURL: "/api/usuarios/google/callback"
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    let usuario = await UserDaoMongo.getBy({ email: profile.emails[0].value });
-    if (!usuario) {
-      usuario = await UserDaoMongo.create({
-        first_name: profile.name.givenName,
-        last_name: profile.name.familyName,
-        email: profile.emails[0].value,
-        password: "google", // Valor por defecto
-        role: "user"
-      });
-    }
-    return done(null, usuario);
-  }
-));
+  passport.use(
+    "google",
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+        passReqToCallback: true,
+      },
+      async (req, accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails[0].value;
+          if (!email) return done(new Error("No se pudo obtener el email del perfil de Google"));
+          let usuario = await UserDaoMongo.getBy({ email });
 
+          if (!usuario) {
+            const [first_name, ...rest] = profile.displayName.split(" ");
+            const last_name = rest.join(" ") || "GoogleUser";
 
+            usuario = await UserDaoMongo.create({
+              first_name,
+              last_name,
+              email,
+              googleId: profile.id,
+              password: "google-auth", 
+              foto: profile.photos?.[0]?.value || "",
+            });
+          }
+
+          return done(null, usuario);
+        } catch (err) {
+          console.error("Error en estrategia Google:", err);
+          return done(err, false);
+        }
+      }
+    )
+  );
+  
+  passport.use(
+    "jwt",
+    new JwtStrategy(jwtOptions, async (payload, done) => {
+      try {
+        const usuario = await UserDaoMongo.getById(payload.id);
+        if (!usuario) return done(null, false);
+        return done(null, usuario);
+      } catch (err) {
+        return done(err, false);
+      }
+    })
+  );
 };
-
-
-
-
-
-
-
-
-
 
 

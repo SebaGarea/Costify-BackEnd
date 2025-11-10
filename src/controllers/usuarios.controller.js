@@ -2,6 +2,7 @@ import { isValidObjectId } from "mongoose";
 import { usuariosService } from "../services/usuarios.service.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 import jwt from "jsonwebtoken";
+import { generaHash } from "../config/config.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -98,16 +99,29 @@ export default class UsuariosController {
 
   static async loginUsuario(req, res) {
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "8h",
     });
     res.json({ mensaje: "Login local exitoso", token, usuario: req.user });
   }
 
   static async loginGoogleCallback(req, res) {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    res.json({ mensaje: "Login con Google exitoso", token, usuario: req.user });
+    try {
+      const token = jwt.sign(
+        { id: req.user._id, role: req.user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      // Opción A: redirigir al frontend con el token
+      // Ejemplo: http://localhost:5173/?token=...
+      return res.redirect(`http://localhost:8080/?token=${token}`);
+
+      // Opción B: devolver JSON si es solo backend (para Postman)
+      // return res.json({ mensaje: "Login con Google exitoso", token, usuario: req.user });
+    } catch (error) {
+      console.error("Error en loginGoogleCallback:", error);
+      res.status(500).json({ error: "Error en login con Google" });
+    }
   }
 
   static async registroUsuario(req, res) {
@@ -116,4 +130,24 @@ export default class UsuariosController {
   });
   res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
 }
+
+  static async setPassword(req, res) {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email y nueva contraseña requeridos" });
+    }
+    try {
+      let usuario = await usuariosService.usuariosDAO.getBy({ email });
+      if (!usuario) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      const { generaHash } = await import("../config/config.js");
+      const passwordHash = generaHash(password);
+      await usuariosService.usuariosDAO.update(usuario._id, { password: passwordHash });
+      return res.status(200).json({ mensaje: "Contraseña actualizada correctamente" });
+    } catch (error) {
+      return res.status(500).json({ error: `Error al actualizar contraseña: ${error.message}` });
+    }
+  }
 }
