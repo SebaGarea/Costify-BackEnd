@@ -7,7 +7,7 @@ export class ProductoDAOMongo {
 
   static async getAll() {
     return await ProductoModel.find()
-      .populate('planillaCosto') // Trae la planilla de costos asociada
+      .populate('planillaCosto') 
       .lean();
   }
 
@@ -19,12 +19,12 @@ export class ProductoDAOMongo {
 
   static async getByCatalogo(catalogo) {
     return await ProductoModel.find({ catalogo: catalogo })
-      .populate('planillaCosto') // Trae la planilla de costos asociada
+      .populate('planillaCosto') 
       .lean();
   }
   static async getByModelo(modelo) {
     return await ProductoModel.find({ modelo: modelo })
-      .populate('planillaCosto') // Trae la planilla de costos asociada
+      .populate('planillaCosto') 
       .lean();
   }
 

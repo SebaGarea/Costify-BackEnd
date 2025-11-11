@@ -43,7 +43,7 @@ export const validacionUpdate = [
   },
 ];
 
-export const validacionDelete = [
+export const validacionIdUser = [
   param("id").isMongoId().withMessage("ID inválido"),
   (req, res, next) => {
     const errors = validationResult(req);

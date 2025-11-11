@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { productoController } from '../controllers/producto.controller.js';
+import { validacionCreateProducto, validacionUpdateProducto, validacionIdProducto } from '../middlewares/validations/products.validation.js';
 import multer from 'multer';
 import passport from "passport";
 
@@ -15,10 +16,10 @@ const upload = multer({ storage });
 
 export const router = Router();
 
-router.post('/', passport.authenticate("jwt", { session: false }),upload.array('imagenes'), productoController.create);
+router.post('/',passport.authenticate("jwt", { session: false }),validacionCreateProducto,upload.array('imagenes'), productoController.create);
 router.get('/',passport.authenticate("jwt", { session: false }), productoController.getAll);
-router.get('/:id',passport.authenticate("jwt", { session: false }), productoController.getById);
+router.get('/:id',passport.authenticate("jwt", { session: false }),validacionIdProducto, productoController.getById);
 router.get('/catalogo/:catalogo',passport.authenticate("jwt", { session: false }), productoController.getByCatalogo);
-router.put('/:id', upload.array('imagenes'),passport.authenticate("jwt", { session: false }), productoController.update);
-router.delete('/:id',passport.authenticate("jwt", { session: false }), productoController.delete);
+router.put('/:id',passport.authenticate("jwt", { session: false }),validacionUpdateProducto, upload.array('imagenes'), productoController.update);
+router.delete('/:id',passport.authenticate("jwt", { session: false }),validacionIdProducto, productoController.delete);
 router.get('/modelo/:modelo',passport.authenticate("jwt", { session: false }), productoController.getByModelo); 

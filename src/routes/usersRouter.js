@@ -1,7 +1,7 @@
 import express from "express";
 import UsuariosController from "../controllers/usuarios.controller.js";
 import passport from "passport";
-import { validacionRegistro, validacionLogin, validacionUpdate, validacionSetPassword, validacionDelete } from "../middlewares/validations/users.validation.js";
+import { validacionRegistro, validacionLogin, validacionUpdate, validacionSetPassword, validacionIdUser } from "../middlewares/validations/users.validation.js";
 
 export const router = express.Router();
 
@@ -36,7 +36,7 @@ router.get(
   UsuariosController.getUsuarios
 );
 router.get(
-  "/:id", validacionDelete,
+  "/:id", validacionIdUser,
   passport.authenticate("jwt", { session: false }),
   UsuariosController.getUsuariosById
 );
@@ -46,7 +46,7 @@ router.put(
   UsuariosController.updateUsuario
 );
 router.delete(
-  "/:id",validacionDelete,
+  "/:id",validacionIdUser,
   passport.authenticate("jwt", { session: false }),
   UsuariosController.deleteUsuario
 );

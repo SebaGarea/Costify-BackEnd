@@ -10,7 +10,7 @@ const ProductoSchema = new Schema({
   modelo: { type: String, required: true, set: v => v.toLowerCase() }, // Nuevo campo para el modelo
   activo: { type: Boolean, default: true },
   precio: { type: Number, required: true },
-  stock:{type:Number, default: 0} // Nuevo campo para el stock del producto
+  stock:{type:Number, default: 0} 
 }, { timestamps: true });
 
 export const ProductoModel = mongoose.model('Producto', ProductoSchema);
