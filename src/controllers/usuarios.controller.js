@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default class UsuariosController {
-  static async getUsuarios(req, res) {
+  static async getUsuarios(req, res, next) {
     try {
       let usuarios = await usuariosService.getUsuarios();
       let usuariosDTO = UsuarioDTO.fromArray(usuarios);

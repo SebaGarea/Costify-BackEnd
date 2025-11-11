@@ -1,7 +1,7 @@
 import { materiaPrimaService } from "../services/materiaPrima.service.js";
 
 export default class MateriaPrimaController {
-  static async getAll(req, res) {
+  static async getAll(req, res, next) {
     try {
       const materiasPrimas = await materiaPrimaService.getAllMateriaPrimas();
       return res.json({
@@ -9,59 +9,50 @@ export default class MateriaPrimaController {
         materiasPrimas,
       });
     } catch (error) {
-      console.error("Error al obtener materias primas:", error);
-
-      return res.status(500).json({
-        status: "error",
-        error: "Error al obtener materias primas",
-      });
+      next(error);
     }
   }
 
-  static async getById(req, res) {
+  static async getById(req, res, next) {
     try {
       const { id } = req.params;
       const materiaPrima = await materiaPrimaService.getMateriaPrimaById(id);
       if (!materiaPrima) {
-        return res.status(404).json({
-          status: "error",
-          error: "Materia Prima no encontrada",
-        });
+        const error = new Error("Materia Prima no encontrada");
+        error.status = 404;
+        return next(error);
       }
       return res.json({
         status: "success",
         materiaPrima,
       });
     } catch (error) {
-      console.error("Error al obtener materia prima por ID:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al obtener materia prima por ID",
-      });
+      next(error);
     }
   }
 
-  static async create(req, res) {
+  static async create(req, res, next) {
     try {
       const newMateriaPrima = req.body;
       const createdMateriaPrima = await materiaPrimaService.createMateriaPrima(
         newMateriaPrima
       );
+      if (!createdMateriaPrima) {
+        const error = new Error("No se pudo crear la materia prima");
+        error.status = 400;
+        return next(error);
+      }
 
       return res.status(201).json({
         status: "success",
         materiaPrima: createdMateriaPrima,
       });
     } catch (error) {
-      console.error("Error al crear materia prima:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al crear materia prima",
-      });
+      next(error);
     }
   }
 
-  static async update(req, res) {
+  static async update(req, res, next) {
     try {
       const { id } = req.params;
       const updatedData = req.body;
@@ -72,125 +63,109 @@ export default class MateriaPrimaController {
       );
 
       if (!updatedMateriaPrima) {
-        return res.status(404).json({
-          status: "error",
-          error: `Materia Prima con ID ${id} no encontrada`,
-        });
+        const error = new Error("No se pudo actualizar la materia prima");
+        error.status = 400;
+        return next(error);
       }
 
       return res.json({
         status: "success",
         message: "Materia Prima actualizada correctamente",
-        materiaPrima: updatedMateriaPrima
+        materiaPrima: updatedMateriaPrima,
       });
     } catch (error) {
-      console.error("Error al actualizar materia prima:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al actualizar materia prima",
-      });
+      next(error);
     }
   }
 
-  static async delete(req, res) {
+  static async delete(req, res, next) {
     try {
       const { id } = req.params;
 
-      if(!id){
-        return res.status(400).json({
-          status: "error",
-          error: "ID de Materia Prima es requerido",
-        });
+      if (!id) {
+        const error = new Error("ID de Materia Prima es requerido");
+        error.status = 400;
+        return next(error);
       }
 
-      const deletedMateriaPrima = await materiaPrimaService.deleteMateriaPrima(id);
+      const deletedMateriaPrima = await materiaPrimaService.deleteMateriaPrima(
+        id
+      );
 
       if (!deletedMateriaPrima) {
-        return res.status(404).json({
-          status: "error",
-          error: `Materia Prima con ID ${id} no encontrada`,
-        });
-      }
+      const error = new Error("No se pudo eliminar la materia prima");
+      error.status = 400;
+      return next(error);
+    }
 
       return res.json({
         status: "success",
         message: "Materia Prima eliminada correctamente",
       });
     } catch (error) {
-      console.error("Error al eliminar materia prima:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al eliminar materia prima",
-      });
+      next(error);
     }
   }
 
-  static async getByCategory(req, res) {
+  static async getByCategory(req, res, next) {
     try {
       const { category } = req.params;
-      const materiasPrimas = await materiaPrimaService.getMateriaPrimasByCategory(category);
+      const materiasPrimas =
+        await materiaPrimaService.getMateriaPrimasByCategory(category);
 
       if (!materiasPrimas || materiasPrimas.length === 0) {
-        return res.status(404).json({
-          status: "error",
-          error: `No se encontraron materias primas en la categoría ${category}`,
-        });
-      }
+      const error = new Error(`No se encontraron materias primas en la categoría ${category}`);
+      error.status = 404;
+      return next(error);
+    }
 
       return res.json({
         status: "success",
         materiasPrimas,
       });
     } catch (error) {
-      console.error("Error al obtener materias primas por categoría:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al obtener materias primas por categoría",
-      });
+      next(error);
     }
   }
 
-  static async getAllCategories(req, res) {
-  try {
-    const categorias = await materiaPrimaService.getAllCategories();
-    // Transformar a array de objetos con propiedad nombre
-    const categoriasObj = categorias.map(nombre => ({ nombre }));
-    return res.json({
-      status: "success",
-      categorias: categoriasObj,
-    });
-  } catch (error) {
-    console.error("Error al obtener categorías:", error);
-    return res.status(500).json({
-      status: "error",
-      error: "Error al obtener categorías",
-    });
+  static async getAllCategories(req, res, next) {
+    try {
+      const categorias = await materiaPrimaService.getAllCategories();
+      if(!categorias || categorias.length === 0){
+        const error = new Error("No se encontraron categorías");
+      error.status = 404;
+      return next(error);
+      }
+      // Transformar a array de objetos con propiedad nombre
+      const categoriasObj = categorias.map((nombre) => ({ nombre }));
+      return res.json({
+        status: "success",
+        categorias: categoriasObj,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-static async getByType(req, res) {
+  static async getByType(req, res, next) {
     try {
       const { type } = req.params;
-      const materiasPrimas = await materiaPrimaService.getMateriaPrimasByType(type);
+      const materiasPrimas = await materiaPrimaService.getMateriaPrimasByType(
+        type
+      );
 
       if (!materiasPrimas || materiasPrimas.length === 0) {
-        return res.status(404).json({
-          status: "error",
-          error: `No se encontraron materias primas del tipo ${type}`,
-        });
-      }
+      const error = new Error("No se encontraron materias primas de ese tipo");
+      error.status = 404;
+      return next(error);
+    }
 
       return res.json({
         status: "success",
         materiasPrimas,
       });
     } catch (error) {
-      console.error("Error al obtener materias primas por tipo:", error);
-      return res.status(500).json({
-        status: "error",
-        error: "Error al obtener materias primas por tipo",
-      });
+      next(error);
     }
   }
-
 }
