@@ -44,19 +44,6 @@ export default class MateriaPrimaController {
   static async create(req, res) {
     try {
       const newMateriaPrima = req.body;
-
-      if (
-        !newMateriaPrima.nombre ||
-        !newMateriaPrima.categoria ||
-        !newMateriaPrima.type ||
-        !newMateriaPrima.medida ||
-        !newMateriaPrima.precio
-      ) {
-        return res.status(400).json({
-          status: "error",
-          error: "Faltan datos requeridos",
-        });
-      }
       const createdMateriaPrima = await materiaPrimaService.createMateriaPrima(
         newMateriaPrima
       );
