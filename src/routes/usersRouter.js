@@ -1,6 +1,7 @@
 import express from "express";
 import UsuariosController from "../controllers/usuarios.controller.js";
 import passport from "passport";
+import { validacionRegistro, validacionLogin, validacionUpdate, validacionSetPassword, validacionDelete } from "../middlewares/validations/users.validation.js";
 
 export const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get(
 );
 
 router.post(
-  "/registro",
+  "/registro",validacionRegistro,
   passport.authenticate("registro", { session: false }),
   UsuariosController.registroUsuario
 );
@@ -35,24 +36,24 @@ router.get(
   UsuariosController.getUsuarios
 );
 router.get(
-  "/:id",
+  "/:id", validacionDelete,
   passport.authenticate("jwt", { session: false }),
   UsuariosController.getUsuariosById
 );
 router.put(
-  "/:id",
+  "/:id",validacionUpdate,
   passport.authenticate("jwt", { session: false }),
   UsuariosController.updateUsuario
 );
 router.delete(
-  "/:id",
+  "/:id",validacionDelete,
   passport.authenticate("jwt", { session: false }),
   UsuariosController.deleteUsuario
 );
 router.post(
-  "/login",
+  "/login",validacionLogin,
   passport.authenticate("login", { session: false }),
   UsuariosController.loginUsuario
 );
 
-router.post("/set-password", UsuariosController.setPassword);
+router.post("/set-password",validacionSetPassword, UsuariosController.setPassword);

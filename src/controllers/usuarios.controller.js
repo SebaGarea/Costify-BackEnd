@@ -27,11 +27,9 @@ export default class UsuariosController {
 
   static async getUsuariosById(req, res) {
     let { id } = req.params;
-
     try {
       let usuario = await usuariosService.getUsuariosById(id);
       let usuarioDTO = UsuarioDTO.fromObject(usuario);
-
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
     } catch (error) {
@@ -42,18 +40,13 @@ export default class UsuariosController {
 
   static async updateUsuario(req, res) {
     let { id } = req.params;
-    let { first_name, last_name, email, role, age, password } = req.body;
+    let { first_name, last_name, email, role, password } = req.body;
 
-    if (!isValidObjectId(id)) {
-      res.setHeader("Content-Type", "application/json");
-      return res.status(400).json({ error: `Indique un id de usuario valido` });
-    }
     try {
       let usuarioActualizado = await usuariosService.updateUsuario(id, {
         first_name,
         last_name,
-        email,
-        age,
+        email,       
         password,
         role,
       });
@@ -111,13 +104,7 @@ export default class UsuariosController {
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
-
-      // Opción A: redirigir al frontend con el token
-      // Ejemplo: http://localhost:5173/?token=...
-      return res.redirect(`http://localhost:8080/?token=${token}`);
-
-      // Opción B: devolver JSON si es solo backend (para Postman)
-      // return res.json({ mensaje: "Login con Google exitoso", token, usuario: req.user });
+      return res.redirect(`http://localhost:8080/?token=${token}`);    
     } catch (error) {
       console.error("Error en loginGoogleCallback:", error);
       res.status(500).json({ error: "Error en login con Google" });
@@ -133,11 +120,7 @@ export default class UsuariosController {
 
   static async setPassword(req, res) {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Email y nueva contraseña requeridos" });
-    }
+  
     try {
       let usuario = await usuariosService.usuariosDAO.getBy({ email });
       if (!usuario) {

@@ -1,6 +1,6 @@
 import { UserDaoMongo as UsuariosDAO } from "../dao/UserDAOMongo.js";
 import { generaHash } from "../config/config.js";
-import { isValidObjectId } from "mongoose";
+
 
 class UsuariosService {
   constructor(dao) {
@@ -12,14 +12,7 @@ class UsuariosService {
   }
 
   async getUsuariosById(id) {
-    if (!isValidObjectId(id)) {
-      res.setHeader("Content-Type", "application/json");
-      return res
-        .status(400)
-        .json({ error: `Indique un id de tipo Id MongoDB` });
-    }
-
-    return await this.usuariosDAO.getById(id);
+       return await this.usuariosDAO.getById(id);
   }
 
   async updateUsuario(id, datosActualizados) {
@@ -30,12 +23,6 @@ class UsuariosService {
   }
 
   async delete(id) {
-    if (!isValidObjectId(id)) {
-      res.setHeader("Content-Type", "application/json");
-      return res
-        .status(400)
-        .json({ error: `Indique un id de tipo Id MongoDB` });
-    }
     return await this.usuariosDAO.delete(id);
   }
 }
