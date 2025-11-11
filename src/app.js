@@ -11,6 +11,7 @@ import { router as plantillaCostoRouter } from "./routes/plantillaCostoRouter.js
 import { router as productoRouter } from "./routes/productoRouter.js";
 import { router as ventasRouter } from "./routes/ventasRouter.js";
 import { router as userRouter } from "./routes/usersRouter.js";
+import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();
 
@@ -51,4 +52,5 @@ const startServer = async () => {
   }
 };
 
+app.use(errorHandler);
 startServer();

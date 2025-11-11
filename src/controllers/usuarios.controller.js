@@ -1,8 +1,6 @@
-import { isValidObjectId } from "mongoose";
 import { usuariosService } from "../services/usuarios.service.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 import jwt from "jsonwebtoken";
-import { generaHash } from "../config/config.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -14,31 +12,32 @@ export default class UsuariosController {
 
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({
-        status: "succes",
+        status: "success",
         usuarios: usuariosDTO,
       });
     } catch (error) {
-      res.setHeader("Content-Type", "application/json");
-      return res
-        .status(500)
-        .json({ error: `Error al obtener usuarios: ${error}` });
+      next(error);
     }
   }
 
-  static async getUsuariosById(req, res) {
-    let { id } = req.params;
-    try {
-      let usuario = await usuariosService.getUsuariosById(id);
-      let usuarioDTO = UsuarioDTO.fromObject(usuario);
-      res.setHeader("Content-Type", "application/json");
-      return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
-    } catch (error) {
-      res.setHeader("Content-Type", "application/json");
-      return res.status(500).json({ error: `${error.message}` });
+  static async getUsuariosById(req, res, next) {
+  let { id } = req.params;
+  try {
+    let usuario = await usuariosService.getUsuariosById(id);
+    if (!usuario) {
+      const error = new Error("Usuario no encontrado");
+      error.status = 404;
+      return next(error);
     }
+    let usuarioDTO = UsuarioDTO.fromObject(usuario);
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
+  } catch (error) {
+    next(error);
   }
+}
 
-  static async updateUsuario(req, res) {
+  static async updateUsuario(req, res, next) {
     let { id } = req.params;
     let { first_name, last_name, email, role, password } = req.body;
 
@@ -51,11 +50,10 @@ export default class UsuariosController {
         role,
       });
       if (!usuarioActualizado) {
-        res.setHeader("Content-Type", "application/json");
-        return res
-          .status(404)
-          .json({ error: `No se encontró ningún usuario con el ID: ${id}` });
-      }
+      const error = new Error(`No se encontró ningún usuario con el ID: ${id}`);
+      error.status = 404;
+      return next(error);
+    }
 
       let usuarioDTO = UsuarioDTO.fromObject(usuarioActualizado);
 
@@ -65,28 +63,26 @@ export default class UsuariosController {
         usuario: usuarioDTO,
       });
     } catch (error) {
-      res.setHeader("Content-Type", "application/json");
-      return res
-        .status(400)
-        .json({ error: `Error al actualizar el usuario: ${error.message}` });
+      next(error);
     }
   }
 
-  static async deleteUsuario(req, res) {
+  static async deleteUsuario(req, res, next) {
     let { id } = req.params;
     try {
       let usuario = await usuariosService.delete(id);
+      if (!usuario) {
+      const error = new Error(`No se encontró ningún usuario con el ID: ${id}`);
+      error.status = 404;
+      return next(error);
+    }
       let usuarioDTO = UsuarioDTO.fromObject(usuario);
 
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({ payload: "succes", usuario: usuarioDTO });
     } catch (error) {
       console.log(error);
-      res.setHeader("Content-Type", "application/json");
-      return res.status(500).json({
-        error: `Error al eliminar al Usuario en el Controller`,
-        detalle: `${error.message}`,
-      });
+      next(error);
     }
   }
 
