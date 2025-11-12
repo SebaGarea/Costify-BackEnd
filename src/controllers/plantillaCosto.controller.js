@@ -3,16 +3,21 @@ import { plantillaCostoService } from '../services/plantillaCosto.service.js';
 
 export const plantillaCostoController = {
   
-  async create(req, res) {
+  async create(req, res, next) {
     try {
       const plantilla = await plantillaCostoService.createPlantilla(req.body);
+      if (!plantilla) {
+        const error = new Error("No se pudo crear la plantilla de costo");
+        error.status = 400;
+        return next(error);
+      }
       res.status(201).json(plantilla);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      next(error);
     }
   },
   
-  async getAll(req, res) {
+  async getAll(req, res, next) {
     try {
       const { categoria, tipoProyecto, search } = req.query;
       const filtros = {};
@@ -33,39 +38,56 @@ export const plantillaCostoController = {
       }
       
       const plantillas = await plantillaCostoService.getAllPlantillas(filtros);
+      if (!plantillas) {
+        const error = new Error("No se encontraron plantillas de costo");
+        error.status = 404;
+        return next(error);
+      }
       res.json(plantillas);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
   async getById(req, res) {
     try {
       const plantilla = await plantillaCostoService.getPlantillaById(req.params.id);
-      if (!plantilla) return res.status(404).json({ error: 'Plantilla no encontrada' });
+      if (!plantilla) {
+        const error = new Error("Plantilla no encontrada");
+        error.status = 404;
+        return next(error);
+      }
       res.json(plantilla);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
-  async update(req, res) {
+  async update(req, res, next) {
     try {
       const plantilla = await plantillaCostoService.updatePlantilla(req.params.id, req.body);
-      if (!plantilla) return res.status(404).json({ error: 'Plantilla no encontrada' });
+      if (!plantilla) {
+        const error = new Error("Plantilla no encontrada");
+        error.status = 404;
+        return next(error);
+      }
       res.json(plantilla);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      next(error);
     }
   },
 
-  async delete(req, res) {
+  async delete(req, res, next) {
     try {
       const plantilla = await plantillaCostoService.deletePlantilla(req.params.id);
-      if (!plantilla) return res.status(404).json({ error: 'Plantilla no encontrada' });
+      if (!plantilla) {
+        const error = new Error("Plantilla no encontrada");
+        error.status = 404;
+        return next(error);
+      }
       res.json({ mensaje: 'Plantilla eliminada', plantilla });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   }
 };
