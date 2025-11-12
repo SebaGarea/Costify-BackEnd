@@ -3,63 +3,86 @@ import fs from 'fs';
 import path from 'path';
 
 export const productoController = {
-  async create(req, res) {
+  async create(req, res, next) {
     try {
       let imagenes = [];
+
       if (req.files && req.files.length > 0) {
         imagenes = req.files.map(file => `/uploads/${file.filename}`);
       }
       const producto = await productoService.createProducto({ ...req.body, imagenes });
+      if(!producto) {
+        const error = new Error("No se pudo crear el producto");
+        error.status = 400;
+        return next(error);
+      }
       res.status(201).json(producto);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      next(error);
     }
   },
 
-  async getAll(req, res) {
+  async getAll(req, res, next) {
     try {
       const productos = await productoService.getAllProductos();
+      if (!productos) {
+        const error = new Error("No se encontraron productos");
+        error.status = 404;
+        return next(error);
+      }
       res.json(productos);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
-  async getById(req, res) {
+  async getById(req, res, next) {
     try {
       const producto = await productoService.getProductoById(req.params.id);
-      if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+      if(!producto) {
+        const error = new Error("Producto no encontrado");
+        error.status = 404;
+        return next(error);
+      }
       res.json(producto);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
-  async getByCatalogo(req, res) {
+  async getByCatalogo(req, res, next) {
     try {
       const catalogo = req.params.catalogo.toLowerCase();
       const productos = await productoService.getProductByCatalogo(catalogo);
 
-      if (!productos) return res.status(404).json({ error: 'Productos no encontrados' });
+      if (!productos) {
+        const error = new Error("Productos no encontrados");
+        error.status = 404;
+        return next(error);
+      }
       res.json(productos);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
-  async getByModelo(req, res) {
+  async getByModelo(req, res, next) {
     try {
       const modelo = req.params.modelo.toLowerCase();
       const productos = await productoService.getProductByModelo(modelo);
 
-      if (!productos) return res.status(404).json({ error: 'Productos no encontrados' });
+      if (!productos) {
+        const error = new Error("Productos no encontrados");
+        error.status = 404;
+        return next(error);
+      }
       res.json(productos);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   },
 
-  async update(req, res) {
+  async update(req, res, next) {
     try {
       let updateData = { ...req.body };
       // Si se subieron nuevas imágenes, actualiza el campo imagenes
@@ -67,19 +90,26 @@ export const productoController = {
         updateData.imagenes = req.files.map(file => `/uploads/${file.filename}`);
       }
       const producto = await productoService.updateProducto(req.params.id, updateData);
-      if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+      if(!producto) {
+        const error = new Error("No se pudo actualizar el producto");
+        error.status = 400;
+        return next(error);
+      }
       res.json(producto);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      next(error);
     }
   },
 
-  async delete(req, res) {
+  async delete(req, res, next) {
     try {
       // 1. Buscar el producto antes de eliminarlo para obtener las imágenes
       const producto = await productoService.getProductoById(req.params.id);
-      if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
-
+      if (!producto) {
+        const error = new Error("Producto no encontrado");
+        error.status = 404;
+        return next(error);
+      }
       // 2. Borrar las imágenes físicas si existen
       if (producto.imagenes && Array.isArray(producto.imagenes)) {
         producto.imagenes.forEach((imgPath) => {
@@ -95,12 +125,10 @@ export const productoController = {
           }
         });
       }
-
-      // 3. Eliminar el producto de la base de datos
       const deleted = await productoService.deleteProducto(req.params.id);
       res.json({ mensaje: 'Producto eliminado', producto: deleted });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      next(error);
     }
   }
 };
