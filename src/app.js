@@ -4,7 +4,7 @@ import passport from "passport";
 import{ iniciarPassport } from "./config/passport.config.js";
 import { config } from "./config/config.js";
 import cors from "cors";
-
+import { setupSwagger } from "./docs/swagger.js";
 
 import { router as materiasPrimasRouter } from "./routes/materiasPrimasRouter.js";
 import { router as plantillaCostoRouter } from "./routes/plantillaCostoRouter.js";
@@ -51,6 +51,6 @@ const startServer = async () => {
     process.exit(1); // Finaliza el proceso si falla la conexión
   }
 };
-
+setupSwagger(app);
 app.use(errorHandler);
 startServer();
