@@ -1,4 +1,5 @@
 import { body, param, validationResult } from "express-validator";
+import logger from '../../config/logger.js';
 
 export const validacionCreateMateriaPrima = [
   body("nombre").notEmpty().withMessage("El nombre es obligatorio"),
@@ -9,6 +10,7 @@ export const validacionCreateMateriaPrima = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de creación de materia prima fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -25,6 +27,7 @@ export const validacionUpdateMateriaPrima = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de actualización de materia prima fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -36,6 +39,7 @@ export const validacionIdMateriaPrima = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de ID de materia prima fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -47,6 +51,7 @@ export const validacionCategory = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de categoría fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -58,6 +63,7 @@ export const validacionType = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de tipo fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();

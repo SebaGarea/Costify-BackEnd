@@ -1,4 +1,5 @@
 import {body, param, validationResult} from 'express-validator';
+import logger from '../../config/logger.js';
 
 export const validacionCreateProducto = [
   body("nombre").notEmpty().withMessage("El nombre es obligatorio"),
@@ -8,6 +9,7 @@ export const validacionCreateProducto = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de creación de producto fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -23,6 +25,7 @@ export const validacionUpdateProducto = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de actualización de producto fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -34,6 +37,7 @@ export const validacionIdProducto = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de ID de producto fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();

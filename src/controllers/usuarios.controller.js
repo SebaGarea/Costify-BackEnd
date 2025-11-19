@@ -2,6 +2,7 @@ import { usuariosService } from "../services/usuarios.service.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import logger from "../config/logger.js";
 dotenv.config();
 
 export default class UsuariosController {
@@ -10,12 +11,15 @@ export default class UsuariosController {
       let usuarios = await usuariosService.getUsuarios();
       let usuariosDTO = UsuarioDTO.fromArray(usuarios);
 
+      logger.info("Usuarios obtenidos exitosamente",{cantidad: usuariosDTO.length});
+
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({
         status: "success",
         usuarios: usuariosDTO,
       });
     } catch (error) {
+      logger.error('Error al obtener usuarios', { error: error.message, stack: error.stack });
       next(error);
     }
   }
@@ -25,14 +29,17 @@ export default class UsuariosController {
   try {
     let usuario = await usuariosService.getUsuariosById(id);
     if (!usuario) {
+      logger.warn('Usuario no encontrado', { id });
       const error = new Error("Usuario no encontrado");
       error.status = 404;
       return next(error);
     }
     let usuarioDTO = UsuarioDTO.fromObject(usuario);
+    logger.info('Usuario obtenido por ID', { id });
     res.setHeader("Content-Type", "application/json");
     return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
   } catch (error) {
+    logger.error('Error al obtener usuario por ID', { id, error: error.message, stack: error.stack });
     next(error);
   }
 }
@@ -49,7 +56,9 @@ export default class UsuariosController {
         password,
         role,
       });
+
       if (!usuarioActualizado) {
+      logger.warn('Intento de actualizar usuario no existente', { id });   
       const error = new Error(`No se encontró ningún usuario con el ID: ${id}`);
       error.status = 404;
       return next(error);
@@ -57,12 +66,15 @@ export default class UsuariosController {
 
       let usuarioDTO = UsuarioDTO.fromObject(usuarioActualizado);
 
+      logger.info('Usuario actualizado exitosamente', { id });
+
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({
         status: "succes",
         usuario: usuarioDTO,
       });
     } catch (error) {
+      logger.error('Error al actualizar usuario', { id, error: error.message, stack: error.stack });
       next(error);
     }
   }
@@ -72,16 +84,19 @@ export default class UsuariosController {
     try {
       let usuario = await usuariosService.delete(id);
       if (!usuario) {
+      logger.warn('Intento de eliminar usuario no existente', { id });
       const error = new Error(`No se encontró ningún usuario con el ID: ${id}`);
       error.status = 404;
       return next(error);
     }
       let usuarioDTO = UsuarioDTO.fromObject(usuario);
 
+      logger.info('Usuario eliminado exitosamente', { id });
+
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({ payload: "succes", usuario: usuarioDTO });
     } catch (error) {
-      console.log(error);
+      logger.error('Error al eliminar usuario', { id, error: error.message, stack: error.stack });
       next(error);
     }
   }
@@ -90,6 +105,7 @@ export default class UsuariosController {
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
       expiresIn: "8h",
     });
+    logger.info('Login local exitoso', { id: req.user._id });
     res.json({ mensaje: "Login local exitoso", token, usuario: req.user });
   }
 
@@ -100,9 +116,10 @@ export default class UsuariosController {
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
+      logger.info('Login con Google exitoso', { id: req.user._id });
       return res.redirect(`http://localhost:8080/?token=${token}`);    
     } catch (error) {
-      console.error("Error en loginGoogleCallback:", error);
+      logger.error('Error en loginGoogleCallback', { error: error.message, stack: error.stack });
       res.status(500).json({ error: "Error en login con Google" });
     }
   }
@@ -112,6 +129,7 @@ export default class UsuariosController {
       expiresIn: "1h",
     });
     res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
+    logger.info('Usuario registrado exitosamente', { id: req.user._id });
   }
 
   static async setPassword(req, res) {
@@ -140,5 +158,6 @@ export default class UsuariosController {
 
   static async currentUsuario(req, res) {
     res.status(200).json({ usuario: req.user });
+    logger.info('Usuario actual obtenido', { id: req.user._id });
   }
 }

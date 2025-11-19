@@ -1,4 +1,5 @@
 import { body, param, validationResult } from "express-validator";
+import logger from '../../config/logger.js';
 
 export const validacionRegistro = [
   body("email").isEmail().withMessage("Email inválido"),
@@ -8,6 +9,7 @@ export const validacionRegistro = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de registro fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -21,6 +23,7 @@ export const validacionLogin = [
     (req, res, next) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        logger.warn('Validación de login fallida', { errores: errors.array() });
         return res.status(400).json({ errores: errors.array() });
       }
       next();
@@ -37,6 +40,7 @@ export const validacionUpdate = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de actualización fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -48,6 +52,7 @@ export const validacionIdUser = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de ID de usuario fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -60,6 +65,7 @@ export const validacionSetPassword = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de establecimiento de contraseña fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();

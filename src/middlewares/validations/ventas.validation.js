@@ -1,4 +1,5 @@
 import { body, param, validationResult } from "express-validator";
+import logger from '../../config/logger.js';
 
 export const validacionCreateVenta = [
   body("cliente").notEmpty().withMessage("El cliente es obligatorio"),
@@ -11,6 +12,7 @@ export const validacionCreateVenta = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de creación de venta fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -29,6 +31,7 @@ export const validacionUpdateVenta = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de actualización de venta fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -40,6 +43,7 @@ export const validacionIdVenta = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de ID de venta fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -51,6 +55,7 @@ export const validacionIdVenta = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de ID de cliente fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
@@ -64,6 +69,7 @@ export const validacionEstadoVenta = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validación de estado de venta fallida', { errores: errors.array() });
       return res.status(400).json({ errores: errors.array() });
     }
     next();
