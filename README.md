@@ -35,6 +35,7 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 - **Documentación interactiva:** Swagger (`swagger-ui-express`, `swagger-jsdoc`)
 - **Frontend:** React (en desarrollo)
 - **Control de versiones:** Git & GitHub
+- **Logging profesional:** Winston (logs estructurados en consola y archivos)
 
 ---
 
@@ -150,11 +151,12 @@ Este proyecto **está en desarrollo** y puede contener cambios frecuentes y func
 - [x] Validación profesional de datos con express-validator
 - [x] Autenticación de usuarios y protección de rutas
 - [x] Documentación Swagger/OpenAPI
+- [x] Logging con Winston
+- [ ] Tests automatizados
 - [ ] Gestión avanzada de stock
 - [ ] Reportes y estadísticas de costos
 - [ ] Exportación de presupuestos
 - [ ] Panel de administración y control de roles
-- [ ] Tests automatizados
 - [ ] Despliegue en la nube
 
 ---
@@ -166,9 +168,29 @@ Si tienes ideas, sugerencias o encuentras un bug, abre un issue o haz un pull re
 
 ---
 
-## 📄 Licencia
 
-Este proyecto está bajo la licencia MIT.
+## 📝 Logging profesional con Winston
+
+El proyecto implementa logs estructurados usando [Winston](https://github.com/winstonjs/winston):
+
+- Todos los controladores, servicios y middlewares registran eventos importantes, advertencias y errores.
+- Los logs se muestran en consola (con colores según el nivel) y se guardan en archivos dentro de la carpeta `logs/`.
+- Los errores y advertencias de validación también quedan registrados para facilitar el monitoreo y debugging.
+- Los archivos principales de log son:
+  - `logs/error.log`: solo errores
+  - `logs/combined.log`: todos los eventos
+- Puedes revisar los logs para analizar el funcionamiento y detectar problemas en producción.
+
+**Ejemplo de uso en el código:**
+```js
+import logger from './config/logger.js';
+
+logger.info('Usuario creado correctamente', { usuarioId: id });
+logger.warn('Stock bajo en producto', { productoId, stock });
+logger.error('Error al crear venta', { error: err.message, stack: err.stack });
+```
+
+Para más detalles, revisa la configuración en `src/config/logger.js`.
 
 ---
 
