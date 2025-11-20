@@ -27,7 +27,7 @@ app.use(
   cors({
     origin: "http://localhost:5173",
   })
-); //CONFIGURACION DE CORS PARA QUE EL FRONTEND PUEDA ACCEDER
+); 
 
 app.use("/api/materiasPrimas", materiasPrimasRouter);
 app.use("/api/plantillas", plantillaCostoRouter);
