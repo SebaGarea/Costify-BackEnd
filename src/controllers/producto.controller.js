@@ -1,4 +1,4 @@
-import { productoService } from '../services/producto.service.js';
+import { productoService } from '../services/index.js';
 import fs from 'fs';
 import path from 'path';
 import logger from '../config/logger.js';

@@ -1,4 +1,4 @@
-import { plantillaCostoService } from '../services/plantillaCosto.service.js';
+import { plantillaCostoService } from '../services/index.js';
 import logger from '../config/logger.js';
 
 export const plantillaCostoController = {

@@ -1,5 +1,5 @@
-import { UserDaoMongo as UsuariosDAO } from "../dao/UserDAOMongo.js";
-import { generaHash } from "../config/config.js";
+import { UserDaoMongo as UsuariosDAO } from "../dao/index.js";
+import { generaHash } from "../config/index.js";
 
 
 class UsuariosService {

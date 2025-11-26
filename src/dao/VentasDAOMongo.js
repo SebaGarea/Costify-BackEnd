@@ -1,4 +1,4 @@
-import { VentasModel } from "./models/VentasSchema.js";
+import { VentasModel } from "./models/index.js";
 
 export class VentasDAOMongo {
   static async create(data) {

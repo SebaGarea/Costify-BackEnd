@@ -1,4 +1,4 @@
-import { ProductoModel } from './models/ProductoSchema.js';
+import { ProductoModel } from './models/index.js';
 
 export class ProductoDAOMongo {
   static async create(data) {

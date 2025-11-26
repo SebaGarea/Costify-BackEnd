@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ventasController } from "../controllers/ventas.controller.js";
+import { ventasController } from "../controllers/index.js";
 import { validacionCreateVenta, validacionUpdateVenta, validacionIdVenta, validacionClienteId, validacionEstadoVenta } from "../middlewares/validations/ventas.validation.js";
 export const router = Router();
 import passport from "passport";

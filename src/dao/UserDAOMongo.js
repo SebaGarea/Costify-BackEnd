@@ -1,4 +1,4 @@
-import { usuariosModelo } from "./models/UserSchema.js";
+import { usuariosModelo } from "./models/index.js";
 
 export class UserDaoMongo {
   static create(usuario) {

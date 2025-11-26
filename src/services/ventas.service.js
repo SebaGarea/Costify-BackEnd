@@ -1,5 +1,5 @@
 import { ProductoModel } from "../dao/models/ProductoSchema.js";
-import { VentasDAOMongo } from "../dao/VentasDAOMongo.js";
+import { VentasDAOMongo } from "../dao/index.js";
 
 class VentasService {
   constructor(dao) {

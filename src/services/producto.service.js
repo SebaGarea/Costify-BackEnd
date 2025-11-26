@@ -1,4 +1,4 @@
-import { ProductoDAOMongo } from '../dao/ProductoDAOMongo.js';
+import { ProductoDAOMongo } from '../dao/index.js';
 
 class ProductoService {
   constructor(dao) {

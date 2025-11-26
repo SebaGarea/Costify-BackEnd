@@ -1,4 +1,4 @@
-import { MateriaPrimaModel } from './models/MateriaPrimaSchema.js';
+import { MateriaPrimaModel } from './models/index.js';
 
 export class MateriaPrimaDAOMongo {
 

@@ -1,4 +1,4 @@
-import { MateriaPrimaDAOMongo as MateriaPrimaDao } from "../dao/MateriaPrimaDAOMongo.js";
+import { MateriaPrimaDAOMongo as MateriaPrimaDao } from "../dao/index.js";
 
 
 class MateriaPrimaService {

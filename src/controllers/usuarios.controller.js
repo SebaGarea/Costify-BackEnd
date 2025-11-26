@@ -1,11 +1,12 @@
-import { usuariosService } from "../services/usuarios.service.js";
+import { usuariosService } from "../services/index.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
+
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import logger from "../config/logger.js";
 dotenv.config();
 
-export default class UsuariosController {
+export class UsuariosController {
   static async getUsuarios(req, res, next) {
     try {
       let usuarios = await usuariosService.getUsuarios();

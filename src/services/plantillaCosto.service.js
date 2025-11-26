@@ -1,4 +1,4 @@
-import { PlantillaCostoDAOMongo } from '../dao/PlantillaCostoDAOMongo.js';
+import { PlantillaCostoDAOMongo } from '../dao/index.js';
 import { MateriaPrimaModel } from '../dao/models/MateriaPrimaSchema.js';
 
 // Servicio para manejar la lógica de las plantillas de costos

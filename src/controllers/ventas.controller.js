@@ -1,4 +1,4 @@
-import { ventasService } from "../services/ventas.service.js";
+import { ventasService } from "../services/index.js";
 import logger from "../config/logger.js";
 
 export const ventasController = {

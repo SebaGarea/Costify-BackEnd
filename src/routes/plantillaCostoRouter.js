@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { plantillaCostoController } from '../controllers/plantillaCosto.controller.js';
-import {validacionCreatePlantillaCosto,validacionUpdatePlantillaCosto,validacionIdPlantillaCosto} from "../middlewares/validations/plantillaCosto.validation.js";
+import { plantillaCostoController } from '../controllers/index.js';
+import {validacionCreatePlantillaCosto,validacionUpdatePlantillaCosto,validacionIdPlantillaCosto} from "../middlewares/validations/index.js";
 import passport from "passport";
 export const router = Router();
 

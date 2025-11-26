@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { productoController } from '../controllers/producto.controller.js';
-import { validacionCreateProducto, validacionUpdateProducto, validacionIdProducto } from '../middlewares/validations/products.validation.js';
+import { productoController } from '../controllers/index.js';
+import { validacionCreateProducto, validacionUpdateProducto, validacionIdProducto } from '../middlewares/validations/index.js';
 import multer from 'multer';
 import passport from "passport";
 

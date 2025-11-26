@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import MateriaPrimaController from '../controllers/materiaPrima.controller.js';
-import {validacionCreateMateriaPrima,validacionUpdateMateriaPrima,validacionIdMateriaPrima,validacionCategory,validacionType} from "../middlewares/validations/materiasPrimas.validation.js";
+import { MateriaPrimaController } from '../controllers/index.js';
+import {validacionCreateMateriaPrima,validacionUpdateMateriaPrima,validacionIdMateriaPrima,validacionCategory,validacionType} from "../middlewares/validations/index.js";
+
 import passport from "passport";
 
 

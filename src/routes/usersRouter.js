@@ -1,5 +1,5 @@
 import express from "express";
-import UsuariosController from "../controllers/usuarios.controller.js";
+import {  UsuariosController  } from "../controllers/index.js";
 import passport from "passport";
 import {
   validacionRegistro,
@@ -7,7 +7,7 @@ import {
   validacionUpdate,
   validacionSetPassword,
   validacionIdUser,
-} from "../middlewares/validations/users.validation.js";
+} from "../middlewares/validations/index.js";
 
 export const router = express.Router();
 

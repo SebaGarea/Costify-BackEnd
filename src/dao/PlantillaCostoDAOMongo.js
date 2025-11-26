@@ -1,4 +1,4 @@
-import { PlantillaCostoModel } from './models/PlantillaCostoSchema.js';
+import { PlantillaCostoModel } from './models/index.js';
 
 export class PlantillaCostoDAOMongo {
   static async create(data) {

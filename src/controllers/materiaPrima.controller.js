@@ -1,8 +1,8 @@
-import { materiaPrimaService } from "../services/materiaPrima.service.js";
+import { materiaPrimaService } from "../services/index.js";
 import logger from "../config/logger.js";
 
 
-export default class MateriaPrimaController {
+export class MateriaPrimaController {
   static async getAll(req, res, next) {
     try {
       const materiasPrimas = await materiaPrimaService.getAllMateriaPrimas();

@@ -1,16 +1,19 @@
 import express from "express";
 import mongoose from "mongoose";
 import passport from "passport";
-import{ iniciarPassport } from "./config/passport.config.js";
-import { config } from "./config/config.js";
+import{ iniciarPassport } from "./config/index.js";
+import { config } from "./config/index.js";
 import cors from "cors";
 import { setupSwagger } from "./docs/swagger.js";
 
-import { router as materiasPrimasRouter } from "./routes/materiasPrimasRouter.js";
-import { router as plantillaCostoRouter } from "./routes/plantillaCostoRouter.js";
-import { router as productoRouter } from "./routes/productoRouter.js";
-import { router as ventasRouter } from "./routes/ventasRouter.js";
-import { router as userRouter } from "./routes/usersRouter.js";
+import {
+  materiasPrimasRouter,
+  plantillaCostoRouter,
+  productoRouter,
+  ventasRouter,
+  userRouter
+} from "./routes/index.js";
+
 import { errorHandler } from "./middlewares/error.handler.js";
 
 const app = express();
