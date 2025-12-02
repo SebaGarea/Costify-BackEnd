@@ -1,6 +1,6 @@
 import { ProductoDAOMongo } from '../dao/index.js';
 
-class ProductoService {
+export class ProductoService {
   constructor(dao) {
     this.dao = dao;
   }

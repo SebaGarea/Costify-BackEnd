@@ -145,3 +145,4 @@ class PlantillaCostoService {
 
 // Exporta una instancia del servicio
 export const plantillaCostoService = new PlantillaCostoService(PlantillaCostoDAOMongo);
+export { PlantillaCostoService };

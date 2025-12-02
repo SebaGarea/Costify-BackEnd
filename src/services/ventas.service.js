@@ -131,3 +131,4 @@ async deleteVenta(id) {
   }
 }
 export const ventasService = new VentasService(VentasDAOMongo);
+export { VentasService };

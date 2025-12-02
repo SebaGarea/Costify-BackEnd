@@ -2,9 +2,10 @@ import { UserDaoMongo as UsuariosDAO } from "../dao/index.js";
 import { generaHash } from "../config/index.js";
 
 
-class UsuariosService {
-  constructor(dao) {
+export class UsuariosService {
+  constructor(dao, hashFn = generaHash) {
     this.usuariosDAO = dao;
+    this.hashFn = hashFn;
   }
 
   async getUsuarios() {
@@ -17,7 +18,7 @@ class UsuariosService {
 
   async updateUsuario(id, datosActualizados) {
     if (datosActualizados.password) {
-      datosActualizados.password = generaHash(datosActualizados.password);
+      datosActualizados.password = this.hashFn(datosActualizados.password);
     }
     return await this.usuariosDAO.update(id, datosActualizados);
   }

@@ -1,7 +1,7 @@
 import { MateriaPrimaDAOMongo as MateriaPrimaDao } from "../dao/index.js";
 
 
-class MateriaPrimaService {
+export class MateriaPrimaService {
     constructor(dao){
         this.MateriaPrimaDao = dao;
     }
@@ -41,4 +41,4 @@ class MateriaPrimaService {
 
 }
 
-export const  materiaPrimaService = new MateriaPrimaService(MateriaPrimaDao);
+export const materiaPrimaService = new MateriaPrimaService(MateriaPrimaDao);

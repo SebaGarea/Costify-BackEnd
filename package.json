@@ -4,8 +4,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "mocha --experimental-specifier-resolution=node \"test/unitarios/**/*.js\"",
+    "test:integration": "mocha --experimental-specifier-resolution=node \"test/integracion/**/*.js\""
   },
   "keywords": [],
   "author": "Seba Garea",
@@ -20,6 +23,7 @@
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
+    "esm": "^3.2.25",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "express-validator": "^7.3.0",
@@ -35,6 +39,11 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "chai": "^6.2.1",
+    "jest": "^30.2.0",
+    "mocha": "^11.7.5",
+    "nodemon": "^3.1.10",
+    "sinon": "^21.0.0",
+    "supertest": "^7.1.4"
   }
 }
