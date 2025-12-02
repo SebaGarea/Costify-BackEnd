@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "mocha --experimental-specifier-resolution=node \"test/unitarios/**/*.js\"",
-    "test:integration": "mocha --experimental-specifier-resolution=node \"test/integracion/**/*.js\""
+    "test:integration": "mocha --experimental-specifier-resolution=node --file test/integracion/setup.js \"test/integracion/**/*.test.js\""
   },
   "keywords": [],
   "author": "Seba Garea",

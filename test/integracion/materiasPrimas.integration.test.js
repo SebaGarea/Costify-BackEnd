@@ -1,14 +1,7 @@
 import { expect } from "chai";
 import request from "supertest";
 import sinon from "sinon";
-import passport from "passport";
 import { materiaPrimaService } from "../../src/services/materiaPrima.service.js";
-
-process.env.NODE_ENV = process.env.NODE_ENV || "test";
-
-const authStub = sinon
-  .stub(passport, "authenticate")
-  .callsFake(() => (req, res, next) => next());
 
 const { default: app } = await import("../../src/app.js");
 
@@ -21,10 +14,6 @@ describe("Integración - Materias Primas API", () => {
 
   afterEach(() => {
     sandbox.restore();
-  });
-
-  after(() => {
-    authStub.restore();
   });
 
   it("GET /api/materiasPrimas responde 200 con datos", async () => {
@@ -79,5 +68,61 @@ describe("Integración - Materias Primas API", () => {
     expect(res.status).to.equal(400);
     expect(res.body).to.have.property("errores");
     expect(res.body.errores[0].msg).to.equal("ID inválido");
+  });
+
+  it("PUT /api/materiasPrimas/:id actualiza exitosamente", async () => {
+    const updated = { _id: "507f1f77bcf86cd799439014", nombre: "Acero" };
+    sandbox
+      .stub(materiaPrimaService, "updateMateriaPrima")
+      .resolves(updated);
+
+    const res = await request(app)
+      .put("/api/materiasPrimas/507f1f77bcf86cd799439014")
+      .send({ nombre: "Acero" });
+
+    expect(res.status).to.equal(200);
+    expect(res.body.status).to.equal("success");
+    expect(res.body.materiaPrima).to.deep.equal(updated);
+  });
+
+  it("PUT /api/materiasPrimas/:id responde 400 si no se actualiza", async () => {
+    sandbox
+      .stub(materiaPrimaService, "updateMateriaPrima")
+      .resolves(null);
+
+    const res = await request(app)
+      .put("/api/materiasPrimas/507f1f77bcf86cd799439014")
+      .send({ nombre: "Acero" });
+
+    expect(res.status).to.equal(400);
+    expect(res.body.mensaje).to.equal("No se pudo actualizar la materia prima");
+  });
+
+  it("DELETE /api/materiasPrimas/:id elimina exitosamente", async () => {
+    sandbox
+      .stub(materiaPrimaService, "deleteMateriaPrima")
+      .resolves({ acknowledged: true });
+
+    const res = await request(app).delete(
+      "/api/materiasPrimas/507f1f77bcf86cd799439014"
+    );
+
+    expect(res.status).to.equal(200);
+    expect(res.body.message).to.equal(
+      "Materia Prima eliminada correctamente"
+    );
+  });
+
+  it("DELETE /api/materiasPrimas/:id responde 400 si no existe", async () => {
+    sandbox
+      .stub(materiaPrimaService, "deleteMateriaPrima")
+      .resolves(null);
+
+    const res = await request(app).delete(
+      "/api/materiasPrimas/507f1f77bcf86cd799439014"
+    );
+
+    expect(res.status).to.equal(400);
+    expect(res.body.mensaje).to.equal("No se pudo eliminar la materia prima");
   });
 });
