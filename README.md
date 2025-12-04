@@ -26,6 +26,14 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 
 ---
 
+## 🆕 Últimas mejoras
+
+- **Cobertura de pruebas ampliada:** ahora cada entidad clave (materias primas, productos, plantillas, ventas y usuarios) tiene tests de integración para los flujos de actualización y borrado, incluyendo casos 200 y 404.
+- **Validaciones más estrictas en plantillas de costo:** los middlewares verifican IDs, estructura de items y porcentajes personalizados, registrando advertencias detalladas en Winston cuando hay errores.
+- **Actualización segura de usuarios:** el servicio vuelve a hashear contraseñas al modificar perfiles y abstrae el DAO para facilitar los tests unitarios.
+
+---
+
 
 ## 🛠️ Tecnologías utilizadas
 
@@ -33,6 +41,7 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 - **Autenticación:** Passport (local, JWT, Google)
 - **Validación:** express-validator
 - **Documentación interactiva:** Swagger (`swagger-ui-express`, `swagger-jsdoc`)
+- **Testing y QA:** Mocha, Chai, Sinon, Supertest (integración end-to-end) y Jest para utilidades puntuales
 - **Frontend:** React (en desarrollo)
 - **Control de versiones:** Git & GitHub
 - **Logging profesional:** Winston (logs estructurados en consola y archivos)

@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import passport from "passport";
+import helmet from "helmet";
 import { iniciarPassport, config } from "./config/index.js";
 import cors from "cors";
 import { setupSwagger } from "./docs/swagger.js";
@@ -19,6 +20,10 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 
 iniciarPassport();
 app.use(passport.initialize());
