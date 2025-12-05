@@ -5,15 +5,20 @@ import { plantillaCostoService } from "../../src/services/plantillaCosto.service
 
 const { default: app } = await import("../../src/app.js");
 
+const setAuthHandler = globalThis.__setAuthHandler;
+const resetAuthHandler = globalThis.__resetAuthHandler;
+
 describe("Integración - Plantillas de Costo API", () => {
   let sandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    resetAuthHandler();
   });
 
   afterEach(() => {
     sandbox.restore();
+    resetAuthHandler();
   });
 
   it("GET /api/plantillas responde 200 con datos", async () => {
@@ -58,6 +63,28 @@ describe("Integración - Plantillas de Costo API", () => {
     expect(res.body).to.deep.equal(created);
   });
 
+  it("POST /api/plantillas responde 401 si falta autenticación", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(401).json({ mensaje: "No autenticado" })
+    );
+
+    const res = await request(app)
+      .post("/api/plantillas")
+      .send({
+        nombre: "Plantilla Premium",
+        items: [
+          {
+            materiaPrima: "507f1f77bcf86cd799439011",
+            cantidad: 2,
+            categoria: "Metal",
+          },
+        ],
+      });
+
+    expect(res.status).to.equal(401);
+    expect(res.body.mensaje).to.equal("No autenticado");
+  });
+
   it("GET /api/plantillas/:id retorna 400 si el id es inválido", async () => {
     const res = await request(app).get("/api/plantillas/invalid-id");
 
@@ -88,6 +115,13 @@ describe("Integración - Plantillas de Costo API", () => {
     expect(res.body.mensaje).to.equal("Plantilla no encontrada");
   });
 
+  it("POST /api/plantillas responde 400 ante validaciones fallidas", async () => {
+    const res = await request(app).post("/api/plantillas").send({});
+
+    expect(res.status).to.equal(400);
+    expect(res.body.errores[0].msg).to.exist;
+  });
+
   it("DELETE /api/plantillas/:id elimina exitosamente", async () => {
     const plantilla = { _id: "507f1f77bcf86cd799439041" };
     sandbox.stub(plantillaCostoService, "deletePlantilla").resolves(plantilla);
@@ -109,5 +143,39 @@ describe("Integración - Plantillas de Costo API", () => {
 
     expect(res.status).to.equal(404);
     expect(res.body.mensaje).to.equal("Plantilla no encontrada");
+  });
+
+  it("DELETE /api/plantillas/:id responde 403 si el rol es insuficiente", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(403).json({ mensaje: "Sin permisos" })
+    );
+
+    const res = await request(app).delete(
+      "/api/plantillas/507f1f77bcf86cd799439041"
+    );
+
+    expect(res.status).to.equal(403);
+    expect(res.body.mensaje).to.equal("Sin permisos");
+  });
+
+  it("POST /api/plantillas responde 500 si el servicio lanza error", async () => {
+    const payload = {
+      nombre: "Plantilla Premium",
+      items: [
+        {
+          materiaPrima: "507f1f77bcf86cd799439011",
+          cantidad: 2,
+          categoria: "Metal",
+        },
+      ],
+    };
+    sandbox
+      .stub(plantillaCostoService, "createPlantilla")
+      .rejects(new Error("DAO caído"));
+
+    const res = await request(app).post("/api/plantillas").send(payload);
+
+    expect(res.status).to.equal(500);
+    expect(res.body.mensaje).to.equal("DAO caído");
   });
 });

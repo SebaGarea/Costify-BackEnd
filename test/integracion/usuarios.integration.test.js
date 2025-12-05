@@ -5,15 +5,20 @@ import { usuariosService } from "../../src/services/usuarios.service.js";
 
 const { default: app } = await import("../../src/app.js");
 
+const setAuthHandler = globalThis.__setAuthHandler;
+const resetAuthHandler = globalThis.__resetAuthHandler;
+
 describe("Integración - Usuarios API", () => {
   let sandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    resetAuthHandler();
   });
 
   afterEach(() => {
     sandbox.restore();
+    resetAuthHandler();
   });
 
   it("GET /api/usuarios responde 200 con DTOs", async () => {
@@ -39,6 +44,17 @@ describe("Integración - Usuarios API", () => {
         rol: "admin",
       },
     ]);
+  });
+
+  it("GET /api/usuarios responde 401 si falta autenticación", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(401).json({ mensaje: "No autenticado" })
+    );
+
+    const res = await request(app).get("/api/usuarios");
+
+    expect(res.status).to.equal(401);
+    expect(res.body.mensaje).to.equal("No autenticado");
   });
 
   it("GET /api/usuarios/:id retorna 400 si el id es inválido", async () => {
@@ -84,6 +100,15 @@ describe("Integración - Usuarios API", () => {
     );
   });
 
+  it("PUT /api/usuarios/:id responde 400 ante validaciones fallidas", async () => {
+    const res = await request(app)
+      .put("/api/usuarios/507f1f77bcf86cd799439060")
+      .send({ email: "bad-email" });
+
+    expect(res.status).to.equal(400);
+    expect(res.body.errores[0].msg).to.equal("Email inválido");
+  });
+
   it("DELETE /api/usuarios/:id elimina y retorna payload", async () => {
     const deleted = {
       _id: "507f1f77bcf86cd799439060",
@@ -116,5 +141,31 @@ describe("Integración - Usuarios API", () => {
     expect(res.body.mensaje).to.equal(
       "No se encontró ningún usuario con el ID: 507f1f77bcf86cd799439060"
     );
+  });
+
+  it("DELETE /api/usuarios/:id responde 403 si el rol es insuficiente", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(403).json({ mensaje: "Sin permisos" })
+    );
+
+    const res = await request(app).delete(
+      "/api/usuarios/507f1f77bcf86cd799439060"
+    );
+
+    expect(res.status).to.equal(403);
+    expect(res.body.mensaje).to.equal("Sin permisos");
+  });
+
+  it("PUT /api/usuarios/:id responde 500 si el servicio lanza error", async () => {
+    sandbox
+      .stub(usuariosService, "updateUsuario")
+      .rejects(new Error("DAO caído"));
+
+    const res = await request(app)
+      .put("/api/usuarios/507f1f77bcf86cd799439060")
+      .send({ first_name: "Jane" });
+
+    expect(res.status).to.equal(500);
+    expect(res.body.mensaje).to.equal("DAO caído");
   });
 });

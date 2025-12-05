@@ -5,15 +5,20 @@ import { ventasService } from "../../src/services/ventas.service.js";
 
 const { default: app } = await import("../../src/app.js");
 
+const setAuthHandler = globalThis.__setAuthHandler;
+const resetAuthHandler = globalThis.__resetAuthHandler;
+
 describe("Integración - Ventas API", () => {
   let sandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    resetAuthHandler();
   });
 
   afterEach(() => {
     sandbox.restore();
+    resetAuthHandler();
   });
 
   it("GET /api/ventas responde 200 con datos", async () => {
@@ -61,11 +66,35 @@ describe("Integración - Ventas API", () => {
     expect(res.body).to.deep.equal(created);
   });
 
+  it("POST /api/ventas responde 401 si falta autenticación", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(401).json({ mensaje: "No autenticado" })
+    );
+
+    const res = await request(app).post("/api/ventas").send({
+      cliente: "Empresa SA",
+      medio: "online",
+      productoId: "507f1f77bcf86cd799439012",
+      cantidad: 3,
+      valorEnvio: 50,
+    });
+
+    expect(res.status).to.equal(401);
+    expect(res.body.mensaje).to.equal("No autenticado");
+  });
+
   it("GET /api/ventas/:id retorna 400 si el id es inválido", async () => {
     const res = await request(app).get("/api/ventas/invalid-id");
 
     expect(res.status).to.equal(400);
     expect(res.body.errores[0].msg).to.equal("ID inválido");
+  });
+
+  it("POST /api/ventas responde 400 ante validaciones fallidas", async () => {
+    const res = await request(app).post("/api/ventas").send({});
+
+    expect(res.status).to.equal(400);
+    expect(res.body.errores[0].msg).to.exist;
   });
 
   it("PUT /api/ventas/:id actualiza exitosamente", async () => {
@@ -113,5 +142,34 @@ describe("Integración - Ventas API", () => {
 
     expect(res.status).to.equal(404);
     expect(res.body.mensaje).to.equal("Venta no encontrada");
+  });
+
+  it("DELETE /api/ventas/:id responde 403 si el rol es insuficiente", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(403).json({ mensaje: "Sin permisos" })
+    );
+
+    const res = await request(app).delete(
+      "/api/ventas/507f1f77bcf86cd799439052"
+    );
+
+    expect(res.status).to.equal(403);
+    expect(res.body.mensaje).to.equal("Sin permisos");
+  });
+
+  it("POST /api/ventas responde 500 si el servicio lanza error", async () => {
+    const payload = {
+      cliente: "Empresa SA",
+      medio: "online",
+      productoId: "507f1f77bcf86cd799439012",
+      cantidad: 3,
+      valorEnvio: 50,
+    };
+    sandbox.stub(ventasService, "createVenta").rejects(new Error("DAO caído"));
+
+    const res = await request(app).post("/api/ventas").send(payload);
+
+    expect(res.status).to.equal(500);
+    expect(res.body.mensaje).to.equal("DAO caído");
   });
 });

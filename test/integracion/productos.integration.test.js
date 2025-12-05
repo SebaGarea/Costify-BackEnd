@@ -5,15 +5,20 @@ import { productoService } from "../../src/services/producto.service.js";
 
 const { default: app } = await import("../../src/app.js");
 
+const setAuthHandler = globalThis.__setAuthHandler;
+const resetAuthHandler = globalThis.__resetAuthHandler;
+
 describe("Integración - Productos API", () => {
   let sandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    resetAuthHandler();
   });
 
   afterEach(() => {
     sandbox.restore();
+    resetAuthHandler();
   });
 
   it("GET /api/productos responde 200 con datos", async () => {
@@ -26,6 +31,35 @@ describe("Integración - Productos API", () => {
 
     expect(res.status).to.equal(200);
     expect(res.body).to.deep.equal(productosMock);
+  });
+
+  it("POST /api/productos responde 401 si falta autenticación", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(401).json({ mensaje: "No autenticado" })
+    );
+
+    const res = await request(app).post("/api/productos").send({
+      nombre: "Mesa",
+      catalogo: "hogar",
+      modelo: "m-123",
+      precio: 100,
+    });
+
+    expect(res.status).to.equal(401);
+    expect(res.body.mensaje).to.equal("No autenticado");
+  });
+
+  it("DELETE /api/productos/:id responde 403 si el rol es insuficiente", async () => {
+    setAuthHandler((req, res, _next) =>
+      res.status(403).json({ mensaje: "Sin permisos" })
+    );
+
+    const res = await request(app).delete(
+      "/api/productos/507f1f77bcf86cd799439032"
+    );
+
+    expect(res.status).to.equal(403);
+    expect(res.body.mensaje).to.equal("Sin permisos");
   });
 
   it("GET /api/productos responde 404 si no hay productos", async () => {
@@ -51,6 +85,13 @@ describe("Integración - Productos API", () => {
 
     expect(res.status).to.equal(201);
     expect(res.body).to.deep.equal(created);
+  });
+
+  it("POST /api/productos responde 400 ante validaciones fallidas", async () => {
+    const res = await request(app).post("/api/productos").send({});
+
+    expect(res.status).to.equal(400);
+    expect(res.body.errores[0].msg).to.exist;
   });
 
   it("GET /api/productos/:id retorna 400 si el id es inválido", async () => {
@@ -81,6 +122,22 @@ describe("Integración - Productos API", () => {
 
     expect(res.status).to.equal(400);
     expect(res.body.mensaje).to.equal("No se pudo actualizar el producto");
+  });
+
+  it("POST /api/productos responde 500 si el servicio lanza error", async () => {
+    const payload = {
+      nombre: "Mesa",
+      catalogo: "hogar",
+      modelo: "m-123",
+      precio: 199.99,
+    };
+    const error = new Error("Fallo en DAO");
+    sandbox.stub(productoService, "createProducto").rejects(error);
+
+    const res = await request(app).post("/api/productos").send(payload);
+
+    expect(res.status).to.equal(500);
+    expect(res.body.mensaje).to.equal("Fallo en DAO");
   });
 
   it("DELETE /api/productos/:id elimina exitosamente", async () => {
