@@ -67,3 +67,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Trigger Render deploy
+        if: ${{ github.ref == 'refs/heads/dev' && secrets.RENDER_DEPLOY_HOOK != '' }}
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+    
