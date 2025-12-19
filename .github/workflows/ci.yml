@@ -69,7 +69,13 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Trigger Render deploy
-        if: ${{ github.ref == 'refs/heads/dev' && secrets.RENDER_DEPLOY_HOOK != '' }}
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        if: ${{ github.ref == 'refs/heads/dev' }}
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK is not set. Skipping trigger." && exit 0
+          fi
+          curl -X POST "$RENDER_DEPLOY_HOOK"
 
     
