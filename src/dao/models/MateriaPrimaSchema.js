@@ -14,7 +14,7 @@ const MateriaPrimaSchema = new Schema({
     stock: {type:Number, default:0, required:true}
 })
 
-export const MateriaPrimaModel = mongoose.model('MateriaPrimaCollection', MateriaPrimaSchema);
+export const MateriaPrimaModel = mongoose.model(MateriaPrimaCollection, MateriaPrimaSchema);
 
 
 

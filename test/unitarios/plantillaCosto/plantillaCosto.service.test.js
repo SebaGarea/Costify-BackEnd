@@ -10,7 +10,6 @@ describe('PlantillaCostoService', () => {
     update: sinon.stub(),
     delete: sinon.stub(),
   };
-  const mockMateriaPrimaModel = { findById: sinon.stub() };
   let service;
 
   beforeEach(() => {

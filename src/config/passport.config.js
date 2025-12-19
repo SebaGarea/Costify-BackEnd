@@ -4,7 +4,6 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import { UserDaoMongo } from "../dao/UserDAOMongo.js";
 import { generaHash, validaHash } from "./config.js";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
 dotenv.config();

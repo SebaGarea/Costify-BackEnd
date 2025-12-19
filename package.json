@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "lint": "eslint .",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "mocha --experimental-specifier-resolution=node \"test/unitarios/**/*.js\"",
     "test:integration": "mocha --experimental-specifier-resolution=node --file test/integracion/setup.js \"test/integracion/**/*.test.js\""
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "chai": "^6.2.1",
+    "eslint": "^8.57.0",
     "jest": "^30.2.0",
     "mocha": "^11.7.5",
     "nodemon": "^3.1.10",

@@ -55,7 +55,7 @@ export const plantillaCostoController = {
     }
   },
 
-  async getById(req, res) {
+  async getById(req, res, next) {
     try {
       const plantilla = await plantillaCostoService.getPlantillaById(req.params.id);
       if (!plantilla) {
