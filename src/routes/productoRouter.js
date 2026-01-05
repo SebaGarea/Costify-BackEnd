@@ -4,14 +4,7 @@ import { validacionCreateProducto, validacionUpdateProducto, validacionIdProduct
 import multer from 'multer';
 import passport from "passport";
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); 
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 export const router = Router();

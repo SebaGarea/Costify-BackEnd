@@ -135,6 +135,7 @@ describe("ProductoController", () => {
       sinon.restore();
     });
     it("debe actualizar producto correctamente", async () => {
+      sinon.stub(productoService, "getProductoById").resolves({ _id: "1", imagenesPublicIds: [] });
       sinon.stub(productoService, "updateProducto").resolves({ _id: "1", nombre: "Tornillo grande" });
       sinon.stub(logger, "info");
       await productoController.update(req, res, next);
@@ -142,7 +143,15 @@ describe("ProductoController", () => {
       expect(logger.info.called).to.be.true;
     });
     it("debe retornar error si no se actualiza", async () => {
+      sinon.stub(productoService, "getProductoById").resolves({ _id: "1", imagenesPublicIds: [] });
       sinon.stub(productoService, "updateProducto").resolves(null);
+      sinon.stub(logger, "warn");
+      await productoController.update(req, res, next);
+      expect(next.calledWith(sinon.match.instanceOf(Error))).to.be.true;
+      expect(logger.warn.called).to.be.true;
+    });
+    it("debe retornar error si el producto no existe al actualizar", async () => {
+      sinon.stub(productoService, "getProductoById").resolves(null);
       sinon.stub(logger, "warn");
       await productoController.update(req, res, next);
       expect(next.calledWith(sinon.match.instanceOf(Error))).to.be.true;

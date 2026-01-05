@@ -32,6 +32,9 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 - **Validaciones más estrictas en plantillas de costo:** los middlewares verifican IDs, estructura de items y porcentajes personalizados, registrando advertencias detalladas en Winston cuando hay errores.
 - **Actualización segura de usuarios:** el servicio vuelve a hashear contraseñas al modificar perfiles y abstrae el DAO para facilitar los tests unitarios.
 - **Capa extra de seguridad HTTP:** se incorporó [Helmet](https://github.com/helmetjs/helmet) para endurecer cabeceras y evitar ataques comunes en navegadores, manteniendo compatibilidad con Swagger.
+- **Docker first:** se añadieron `Dockerfile` y `docker-compose.yml` para levantar API + MongoDB con un solo comando y facilitar paridad entre entornos.
+- **CI en GitHub Actions:** el workflow [ci.yml](.github/workflows/ci.yml) ejecuta `npm ci`, linting, tests, `docker build` y publica la imagen en GHCR en cada push/PR.
+- **Despliegue automático en Render:** tras un commit en `main`, la Action dispara el Deploy Hook de Render, asegurando que producción siempre corra la última build validada.
 
 ---
 
@@ -73,6 +76,31 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 5. El backend estará disponible en `http://localhost:8080` por defecto.
 6. La documentación interactiva de la API estará disponible en:
   - [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+
+---
+
+### 🐳 Ejecutar con Docker
+
+```bash
+docker compose up --build
+```
+
+Este comando levanta:
+
+- API Node/Express en `http://localhost:8080`
+- MongoDB local (`mongodb://mongo:27017/costify`)
+
+Las variables por defecto se definen en `.env.docker`. Ajusta los puertos según tus necesidades.
+
+---
+
+### ☁️ CI/CD y despliegue
+
+1. **GitHub Actions:** `/.github/workflows/ci.yml` corre lint + tests, construye la imagen y la publica en `ghcr.io/SebaGarea/Costify-BackEnd`.
+2. **Render:** un Deploy Hook configurado en el servicio `costify-backend-1` se activa al finalizar la pipeline y Render reconstruye/actualiza el contenedor.
+3. **Entorno productivo:** disponible en `https://costify-backend-1.onrender.com`, con el mismo Dockerfile que se usa localmente.
+
+Para inspeccionar las ejecuciones visita la pestaña **Actions** del repo.
 
 ---
 

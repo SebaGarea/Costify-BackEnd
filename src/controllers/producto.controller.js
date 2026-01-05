@@ -1,18 +1,21 @@
-import { productoService } from '../services/index.js';
 import fs from 'fs';
 import path from 'path';
 import logger from '../config/logger.js';
+import { productoService, uploadProductImages, deleteCloudinaryAssets } from '../services/index.js';
 
 export const productoController = {
   async create(req, res, next) {
     try {
       let imagenes = [];
+      let imagenesPublicIds = [];
 
       if (req.files && req.files.length > 0) {
         logger.info(`Imágenes recibidas: ${req.files.length}`);
-        imagenes = req.files.map(file => `/uploads/${file.filename}`);
+        const uploadResult = await uploadProductImages(req.files);
+        imagenes = uploadResult.urls;
+        imagenesPublicIds = uploadResult.publicIds;
       }
-      const producto = await productoService.createProducto({ ...req.body, imagenes });
+      const producto = await productoService.createProducto({ ...req.body, imagenes, imagenesPublicIds });
       if(!producto) {
         logger.warn('No se pudo crear el producto', { body: req.body });
         const error = new Error("No se pudo crear el producto");
@@ -101,10 +104,22 @@ export const productoController = {
 
   async update(req, res, next) {
     try {
+      const productoActual = await productoService.getProductoById(req.params.id);
+      if(!productoActual) {
+        logger.warn(`Producto no encontrado para actualizar, ID: ${req.params.id}`);
+        const error = new Error("No se pudo actualizar el producto");
+        error.status = 400;
+        return next(error);
+      }
+
       let updateData = { ...req.body };
-      // Si se subieron nuevas imágenes, actualiza el campo imagenes
       if (req.files && req.files.length > 0) {
-        updateData.imagenes = req.files.map(file => `/uploads/${file.filename}`);
+        if (productoActual.imagenesPublicIds && productoActual.imagenesPublicIds.length > 0) {
+          await deleteCloudinaryAssets(productoActual.imagenesPublicIds);
+        }
+        const uploadResult = await uploadProductImages(req.files);
+        updateData.imagenes = uploadResult.urls;
+        updateData.imagenesPublicIds = uploadResult.publicIds;
       }
       const producto = await productoService.updateProducto(req.params.id, updateData);
       if(!producto) {
@@ -131,6 +146,10 @@ export const productoController = {
         error.status = 404;
         return next(error);
       }
+      if (producto.imagenesPublicIds && producto.imagenesPublicIds.length > 0) {
+        await deleteCloudinaryAssets(producto.imagenesPublicIds);
+      }
+
       // 2. Borrar las imágenes físicas si existen
       if (producto.imagenes && Array.isArray(producto.imagenes)) {
         producto.imagenes.forEach((imgPath) => {
