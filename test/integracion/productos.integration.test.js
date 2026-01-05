@@ -103,6 +103,9 @@ describe("Integración - Productos API", () => {
 
   it("PUT /api/productos/:id actualiza exitosamente", async () => {
     const updated = { _id: "507f1f77bcf86cd799439032", nombre: "Mesa" };
+    sandbox
+      .stub(productoService, "getProductoById")
+      .resolves({ _id: "507f1f77bcf86cd799439032", imagenesPublicIds: [] });
     sandbox.stub(productoService, "updateProducto").resolves(updated);
 
     const res = await request(app)
@@ -114,6 +117,9 @@ describe("Integración - Productos API", () => {
   });
 
   it("PUT /api/productos/:id responde 400 si no se actualiza", async () => {
+    sandbox
+      .stub(productoService, "getProductoById")
+      .resolves({ _id: "507f1f77bcf86cd799439032", imagenesPublicIds: [] });
     sandbox.stub(productoService, "updateProducto").resolves(null);
 
     const res = await request(app)
