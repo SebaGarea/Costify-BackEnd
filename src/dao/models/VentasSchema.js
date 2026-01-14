@@ -9,7 +9,8 @@ const VentasSchema = new Schema(
     producto: {
       type: Schema.Types.ObjectId,
       ref: "Producto", // Referencia al modelo Producto
-      required: true,
+      required: false,
+      default: null,
     },
     productoNombre: {
       type: String,
@@ -22,6 +23,7 @@ const VentasSchema = new Schema(
       required: false, // Puede ser opcional si no siempre hay plantilla asociada
     },
     cantidad: { type: Number, required: true },
+    precioManual: { type: Number, default: null },
   descripcion: { type: String },
     valorEnvio: { type: Number, default: 0 },
     valorTotal: { type: Number, required: true },

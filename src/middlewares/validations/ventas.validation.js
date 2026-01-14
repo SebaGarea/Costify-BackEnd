@@ -4,7 +4,10 @@ import logger from '../../config/logger.js';
 export const validacionCreateVenta = [
   body("cliente").notEmpty().withMessage("El cliente es obligatorio"),
   body("medio").notEmpty().withMessage("El medio es obligatorio"),
-  body("productoId").isMongoId().withMessage("El productoId debe ser válido"),
+  body("productoId")
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage("El productoId debe ser válido"),
   body("cantidad").isInt({ min: 1 }).withMessage("La cantidad debe ser mayor a cero"),
   body("valorEnvio").optional().isFloat({ min: 0 }).withMessage("El valor de envío debe ser positivo"),
   body("seña").optional().isFloat({ min: 0 }).withMessage("La seña debe ser positiva"),
@@ -23,7 +26,10 @@ export const validacionUpdateVenta = [
   param("id").isMongoId().withMessage("ID inválido"),
   body("cliente").optional().notEmpty().withMessage("El cliente es obligatorio"),
   body("medio").optional().notEmpty().withMessage("El medio es obligatorio"),
-  body("productoId").optional().isMongoId().withMessage("El productoId debe ser válido"),
+  body("productoId")
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage("El productoId debe ser válido"),
   body("cantidad").optional().isInt({ min: 1 }).withMessage("La cantidad debe ser mayor a cero"),
   body("valorEnvio").optional().isFloat({ min: 0 }).withMessage("El valor de envío debe ser positivo"),
   body("seña").optional().isFloat({ min: 0 }).withMessage("La seña debe ser positiva"),

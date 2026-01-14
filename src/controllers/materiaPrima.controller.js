@@ -8,9 +8,11 @@ export class MateriaPrimaController {
       const materiasPrimas = await materiaPrimaService.getAllMateriaPrimas();
       if(!materiasPrimas || materiasPrimas.length === 0){
         logger.warn("No se encontraron materias primas");
-        const error = new Error("No se encontraron materias primas");
-        error.status = 404;
-        return next(error);
+        return res.json({
+          status: "success",
+          materiasPrimas: [],
+          message: "No hay materias primas registradas",
+        });
       }
       logger.info("Materias primas obtenidas exitosamente");
       return res.json({
@@ -155,9 +157,10 @@ export class MateriaPrimaController {
       const categorias = await materiaPrimaService.getAllCategories();
       if(!categorias || categorias.length === 0){
         logger.warn("No se encontraron categorías");
-        const error = new Error("No se encontraron categorías");
-      error.status = 404;
-      return next(error);
+        return res.json({
+          status: "success",
+          categorias: [],
+        });
       }
       // Transformar a array de objetos con propiedad nombre
       const categoriasObj = categorias.map((nombre) => ({ nombre }));

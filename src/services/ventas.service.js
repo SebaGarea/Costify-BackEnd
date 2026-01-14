@@ -8,32 +8,47 @@ class VentasService {
 
   async createVenta(data) {
     try {
-      const producto = await ProductoModel.findById(data.productoId);
-      if (!producto) throw new Error("Producto no encontrado");
+      const hasProducto = Boolean(data.productoId);
+      let producto = null;
+      if (hasProducto) {
+        producto = await ProductoModel.findById(data.productoId);
+        if (!producto) throw new Error("Producto no encontrado");
+      }
 
-      const valorEnvio = data.valorEnvio || 0;
-      const precioUnitario = producto.precio;
-      const subtotal = precioUnitario * data.cantidad;
-      const valorTotal = subtotal + valorEnvio;
-      const restan = valorTotal - (data.seña || 0);
-      if (data.cantidad <= 0)
-        throw new Error("La cantidad debe ser mayor a cero");
-      if (data.seña > valorTotal)
+      const valorEnvio = Number(data.valorEnvio || 0);
+      const cantidad = Number(data.cantidad || 0);
+      if (cantidad <= 0) throw new Error("La cantidad debe ser mayor a cero");
+
+      const precioManual = Number(data.precioManual || 0);
+
+      let valorTotalCalculado = 0;
+      if (hasProducto && producto) {
+        const precioUnitario = producto.precio;
+        valorTotalCalculado = precioUnitario * cantidad + valorEnvio;
+      } else {
+        if (precioManual <= 0) throw new Error("El precio manual debe ser mayor a cero");
+        valorTotalCalculado = precioManual * cantidad + valorEnvio;
+      }
+
+      const seña = Number(data.seña || 0);
+      if (seña > valorTotalCalculado)
         throw new Error("La seña no puede ser mayor al total");
+      const restan = valorTotalCalculado - seña;
 
       const ventaLimpia = {
         fecha: data.fecha || new Date(),
         cliente: data.cliente,
         medio: data.medio,
-        producto: data.productoId,
+        producto: hasProducto ? data.productoId : null,
         productoNombre: data.productoNombre || "",
         plantilla: data.plantillaId || null,
-        cantidad: data.cantidad,
+        cantidad,
         descripcion: (data.descripcion ?? data.descripcionVenta) || "",
-        valorEnvio: data.valorEnvio || 0,
-        seña: data.seña || 0,
-        valorTotal,
+        valorEnvio,
+        seña,
+        valorTotal: valorTotalCalculado,
         restan,
+        precioManual: hasProducto ? null : precioManual,
         fechaLimite: data.fechaLimite || null,
         // estado por defecto si no se provee
         estado: data.estado || "pendiente",
@@ -43,7 +58,7 @@ class VentasService {
       return nuevaVenta;
     } catch (error) {
       console.error("Error al crear la venta:", error);
-      throw new Error("No se pudo crear la venta");
+      throw error;
     }
   }
 
@@ -72,7 +87,12 @@ class VentasService {
     if (typeof data.fecha !== 'undefined') merged.fecha = data.fecha;
     if (typeof data.cliente !== 'undefined') merged.cliente = data.cliente;
     if (typeof data.medio !== 'undefined') merged.medio = data.medio;
-    if (typeof data.productoId !== 'undefined') merged.producto = data.productoId;
+    const hasProductoId = typeof data.productoId !== 'undefined' && data.productoId !== null && data.productoId !== '';
+    if (hasProductoId) {
+      merged.producto = data.productoId;
+    } else if (typeof data.productoId !== 'undefined') {
+      merged.producto = null;
+    }
     if (typeof data.productoNombre !== 'undefined') merged.productoNombre = data.productoNombre;
     if (typeof data.plantillaId !== 'undefined') merged.plantilla = data.plantillaId;
     if (typeof data.cantidad !== 'undefined') merged.cantidad = data.cantidad;
@@ -80,7 +100,12 @@ class VentasService {
     if (typeof data.descripcionVenta !== 'undefined') merged.descripcion = data.descripcionVenta;
     if (typeof data.valorEnvio !== 'undefined') merged.valorEnvio = data.valorEnvio;
     if (typeof data.seña !== 'undefined') merged.seña = data.seña;
+    if (typeof data.restan !== 'undefined') {
+      const restanValue = Number(data.restan);
+      merged.restan = Number.isNaN(restanValue) ? merged.restan : restanValue;
+    }
     if (typeof data.estado !== 'undefined') merged.estado = data.estado;
+    if (typeof data.precioManual !== 'undefined') merged.precioManual = data.precioManual;
 
     // fechaLimite: parseo seguro
     if (typeof data.fechaLimite !== 'undefined') {
@@ -92,25 +117,49 @@ class VentasService {
     }
 
     // Recalcular valorTotal/restan sólo si cambió producto/cantidad/valorEnvio/seña
-    const needsRecalc = ['productoId', 'cantidad', 'valorEnvio', 'seña'].some(k => typeof data[k] !== 'undefined');
+    const needsRecalc = [
+      typeof data.productoId !== 'undefined',
+      typeof data.cantidad !== 'undefined',
+      typeof data.valorEnvio !== 'undefined',
+      typeof data.seña !== 'undefined',
+      typeof data.precioManual !== 'undefined'
+    ].some(Boolean);
     if (needsRecalc) {
-      let producto = null;
-      if (typeof data.productoId !== 'undefined') {
-        producto = await ProductoModel.findById(data.productoId);
-        if (!producto) throw new Error('Producto no encontrado');
-      } else {
-        producto = actual.producto && actual.producto.precio ? actual.producto : null;
-      }
-      const precioUnitario = producto ? producto.precio : 0;
-      const cantidad = typeof merged.cantidad !== 'undefined' ? merged.cantidad : 0;
+      const cantidad = Number(typeof merged.cantidad !== 'undefined' ? merged.cantidad : 0);
       if (cantidad <= 0) throw new Error('La cantidad debe ser mayor a cero');
-      const subtotal = precioUnitario * cantidad;
-      const valorEnvio = typeof merged.valorEnvio !== 'undefined' ? merged.valorEnvio : 0;
-      const valorTotal = subtotal + valorEnvio;
-      const seña = typeof merged.seña !== 'undefined' ? merged.seña : 0;
-      if (seña > valorTotal) throw new Error('La seña no puede ser mayor al total');
+      const valorEnvioActual = Number(typeof merged.valorEnvio !== 'undefined' ? merged.valorEnvio : 0);
+      const señaActual = Number(typeof merged.seña !== 'undefined' ? merged.seña : 0);
+
+      let valorTotal = 0;
+      if (merged.producto) {
+        let producto = null;
+        if (typeof merged.producto === 'object' && merged.producto.precio) {
+          producto = merged.producto;
+        } else {
+          const productoId = typeof merged.producto === 'object' && merged.producto._id
+            ? merged.producto._id
+            : merged.producto;
+          producto = await ProductoModel.findById(productoId);
+        }
+        if (!producto) throw new Error('Producto no encontrado');
+        valorTotal = producto.precio * cantidad + valorEnvioActual;
+        merged.precioManual = null;
+      } else {
+        const precioManual = Number(
+          typeof merged.precioManual !== 'undefined' && merged.precioManual !== null
+            ? merged.precioManual
+            : typeof actual.precioManual !== 'undefined'
+              ? actual.precioManual
+              : 0
+        );
+        if (precioManual <= 0) throw new Error('El precio manual debe ser mayor a cero');
+        valorTotal = precioManual * cantidad + valorEnvioActual;
+        merged.precioManual = precioManual;
+      }
+
+      if (señaActual > valorTotal) throw new Error('La seña no puede ser mayor al total');
       merged.valorTotal = valorTotal;
-      merged.restan = valorTotal - seña;
+      merged.restan = valorTotal - señaActual;
     }
 
     // Manejar timestamps para en_proceso

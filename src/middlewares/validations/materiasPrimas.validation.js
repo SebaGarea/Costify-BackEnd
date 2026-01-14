@@ -4,7 +4,8 @@ import logger from '../../config/logger.js';
 export const validacionCreateMateriaPrima = [
   body("nombre").notEmpty().withMessage("El nombre es obligatorio"),
   body("categoria").notEmpty().withMessage("La categoría es obligatoria"),
-  body("tipo").notEmpty().withMessage("El tipo es obligatorio"),
+  body("type").notEmpty().withMessage("El tipo es obligatorio"),
+  body("medida").notEmpty().withMessage("La medida es obligatoria"),
   body("unidad").notEmpty().withMessage("La unidad es obligatoria"),
   body("precio").isFloat({ min: 0 }).withMessage("El precio debe ser un número positivo"),
   (req, res, next) => {
@@ -21,7 +22,8 @@ export const validacionUpdateMateriaPrima = [
   param("id").isMongoId().withMessage("ID inválido"),
   body("nombre").optional().notEmpty().withMessage("El nombre es obligatorio"),
   body("categoria").optional().notEmpty().withMessage("La categoría es obligatoria"),
-  body("tipo").optional().notEmpty().withMessage("El tipo es obligatorio"),
+  body("type").optional().notEmpty().withMessage("El tipo es obligatorio"),
+  body("medida").optional().notEmpty().withMessage("La medida es obligatoria"),
   body("unidad").optional().notEmpty().withMessage("La unidad es obligatoria"),
   body("precio").optional().isFloat({ min: 0 }).withMessage("El precio debe ser un número positivo"),
   (req, res, next) => {
