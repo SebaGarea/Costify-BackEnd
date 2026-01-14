@@ -64,7 +64,13 @@ describe('VentasService', () => {
 
   describe('updateVenta', () => {
     it('debe actualizar una venta', async () => {
-      mockDAO.getById.resolves({ _id: 'v1', cantidad: 1 });
+      mockDAO.getById.resolves({
+        _id: 'v1',
+        cantidad: 1,
+        producto: 'p1',
+        valorEnvio: 0,
+        seña: 0
+      });
       mockDAO.update.resolves({ _id: 'v1', cantidad: 2 });
       const result = await service.updateVenta('v1', { cantidad: 2 });
       expect(result.cantidad).to.equal(2);

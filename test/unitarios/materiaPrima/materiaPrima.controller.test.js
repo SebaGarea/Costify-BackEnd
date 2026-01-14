@@ -74,7 +74,14 @@ describe("MateriaPrimaController", () => {
       sinon.stub(materiaPrimaService, "getAllMateriaPrimas").resolves([]);
       sinon.stub(logger, "warn");
       await MateriaPrimaController.getAll(req, res, next);
-      expect(next.calledWith(sinon.match.instanceOf(Error))).to.be.true;
+      expect(
+        res.json.calledWith({
+          status: "success",
+          materiasPrimas: [],
+          message: "No hay materias primas registradas",
+        })
+      ).to.be.true;
+      expect(next.called).to.be.false;
       expect(logger.warn.called).to.be.true;
     });
   });
@@ -98,7 +105,10 @@ describe("MateriaPrimaController", () => {
       sinon.stub(materiaPrimaService, "getAllCategories").resolves([]);
       sinon.stub(logger, "warn");
       await MateriaPrimaController.getAllCategories(req, res, next);
-      expect(next.calledWith(sinon.match.instanceOf(Error))).to.be.true;
+      expect(
+        res.json.calledWith({ status: "success", categorias: [] })
+      ).to.be.true;
+      expect(next.called).to.be.false;
       expect(logger.warn.called).to.be.true;
     });
   });
