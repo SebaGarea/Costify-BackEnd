@@ -11,6 +11,7 @@ describe("MateriaPrimaService", () => {
         daoMock = {
             create: sinon.stub(),
             getAll: sinon.stub(),
+            getPaginated: sinon.stub(),
             getById: sinon.stub(),
             update: sinon.stub(),
             delete: sinon.stub(),
@@ -33,12 +34,12 @@ describe("MateriaPrimaService", () => {
         expect(daoMock.create.calledOnceWith(data)).to.be.true;
     });
 
-    it("debe obtener todas las materias primas", async () => {
-        const materias = [{ _id: "1" }, { _id: "2" }];
-        daoMock.getAll.resolves(materias);
-        const result = await service.getAllMateriaPrimas();
-        expect(result).to.deep.equal(materias);
-        expect(daoMock.getAll.calledOnce).to.be.true;
+    it("debe obtener las materias primas paginadas", async () => {
+        const paginated = { items: [{ _id: "1" }], total: 1, page: 1, limit: 10 };
+        daoMock.getPaginated.resolves(paginated);
+        const result = await service.getAllMateriaPrimas({ page: 1, limit: 10 });
+        expect(result).to.deep.equal(paginated);
+        expect(daoMock.getPaginated.calledOnceWith({ page: 1, limit: 10, filters: {} })).to.be.true;
     });
 
     it("debe obtener materia prima por id", async () => {

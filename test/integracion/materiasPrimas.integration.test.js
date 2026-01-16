@@ -28,24 +28,36 @@ describe("Integración - Materias Primas API", () => {
     ];
     sandbox
       .stub(materiaPrimaService, "getAllMateriaPrimas")
-      .resolves(materiasMock);
+      .resolves({
+        items: materiasMock,
+        total: materiasMock.length,
+        page: 1,
+        limit: 10,
+        availableTypes: ["tipo"],
+        availableMedidas: ["medida"],
+      });
 
     const res = await request(app).get("/api/materiasPrimas");
 
     expect(res.status).to.equal(200);
     expect(res.body.status).to.equal("success");
     expect(res.body.materiasPrimas).to.deep.equal(materiasMock);
+    expect(res.body.pagination).to.deep.equal({ total: 2, page: 1, limit: 10, totalPages: 1 });
+    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: ["tipo"], availableMedidas: ["medida"] });
   });
 
   it("GET /api/materiasPrimas responde 200 aunque no haya registros", async () => {
-    sandbox.stub(materiaPrimaService, "getAllMateriaPrimas").resolves([]);
+    sandbox
+      .stub(materiaPrimaService, "getAllMateriaPrimas")
+      .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [] });
 
     const res = await request(app).get("/api/materiasPrimas");
 
     expect(res.status).to.equal(200);
     expect(res.body.status).to.equal("success");
     expect(res.body.materiasPrimas).to.deep.equal([]);
-    expect(res.body.message).to.equal("No hay materias primas registradas");
+    expect(res.body.pagination).to.deep.equal({ total: 0, page: 1, limit: 10, totalPages: 1 });
+    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: [], availableMedidas: [] });
   });
 
   it("POST /api/materiasPrimas crea materia prima", async () => {

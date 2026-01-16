@@ -1,23 +1,66 @@
 import { materiaPrimaService } from "../services/index.js";
 import logger from "../config/logger.js";
 
+const parseTypeFilter = (value) => {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    return value.map((item) => item?.toString().trim()).filter(Boolean);
+  }
+  const trimmed = value.toString().trim();
+  if (!trimmed) return null;
+  if (trimmed.includes(",")) {
+    return trimmed
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+  }
+  return trimmed;
+};
 
 export class MateriaPrimaController {
   static async getAll(req, res, next) {
     try {
-      const materiasPrimas = await materiaPrimaService.getAllMateriaPrimas();
-      if(!materiasPrimas || materiasPrimas.length === 0){
+      const { page = "1", limit = "10", category, type, medida } = req.query;
+      const parsedPage = Number.isFinite(Number(page)) ? Number(page) : 1;
+      const parsedLimit = Number.isFinite(Number(limit)) ? Number(limit) : 10;
+      const filters = {};
+      if (category) filters.categoria = category;
+      const parsedType = parseTypeFilter(type);
+      if (Array.isArray(parsedType) && parsedType.length > 0) {
+        filters.type = parsedType;
+      } else if (parsedType) {
+        filters.type = parsedType;
+      }
+      if (medida) filters.medida = medida;
+      const result = await materiaPrimaService.getAllMateriaPrimas({
+        page: parsedPage,
+        limit: parsedLimit,
+        filters,
+      });
+
+      const materiasPrimas = result?.items || [];
+      const total = result?.total || 0;
+      const totalPages = Math.max(1, Math.ceil(total / parsedLimit));
+      const availableTypes = result?.availableTypes || [];
+      const availableMedidas = result?.availableMedidas || [];
+
+      if (materiasPrimas.length === 0) {
         logger.warn("No se encontraron materias primas");
-        return res.json({
-          status: "success",
-          materiasPrimas: [],
-          message: "No hay materias primas registradas",
-        });
       }
       logger.info("Materias primas obtenidas exitosamente");
       return res.json({
         status: "success",
         materiasPrimas,
+        pagination: {
+          total,
+          page: parsedPage,
+          limit: parsedLimit,
+          totalPages,
+        },
+        filtersMeta: {
+          availableTypes,
+          availableMedidas,
+        },
       });
     } catch (error) {
       logger.error('Error al obtener las materias primas', { error });
@@ -129,6 +172,21 @@ export class MateriaPrimaController {
     }
   }
 
+  static async deleteAll(req, res, next) {
+    try {
+      const result = await materiaPrimaService.deleteAllMateriaPrimas();
+      logger.warn("Todas las materias primas fueron eliminadas", { deletedCount: result.deletedCount });
+      return res.json({
+        status: "success",
+        message: "Materias primas eliminadas correctamente",
+        deletedCount: result.deletedCount ?? 0,
+      });
+    } catch (error) {
+      logger.error('Error al eliminar todas las materias primas', { error });
+      next(error);
+    }
+  }
+
   static async getByCategory(req, res, next) {
     try {
       const { category } = req.params;
@@ -195,6 +253,25 @@ export class MateriaPrimaController {
       });
     } catch (error) {
       logger.error('Error al obtener las materias primas por tipo', { error });
+      next(error);
+    }
+  }
+
+  static async importFromExcel(req, res, next) {
+    try {
+      if (!req.file || !req.file.buffer) {
+        const error = new Error("No se recibió archivo para importar");
+        error.status = 400;
+        return next(error);
+      }
+
+      const summary = await materiaPrimaService.importFromExcel(req.file.buffer);
+      return res.json({
+        status: "success",
+        resumen: summary,
+      });
+    } catch (error) {
+      logger.error("Error al importar materias primas", { error });
       next(error);
     }
   }

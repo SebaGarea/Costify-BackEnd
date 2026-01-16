@@ -22,6 +22,58 @@ export class MateriaPrimaDAOMongo {
         }
     }
 
+    static async getPaginated({ page = 1, limit = 10, filters = {} } = {}) {
+        try {
+            const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
+            const safePage = Math.max(1, Number(page) || 1);
+            const skip = (safePage - 1) * safeLimit;
+            const query = {};
+            for (const [key, value] of Object.entries(filters || {})) {
+                if (value === undefined || value === null || value === "") {
+                    continue;
+                }
+                if (Array.isArray(value)) {
+                    const sanitized = value.map((item) => item?.toString().trim()).filter(Boolean);
+                    if (sanitized.length > 0) {
+                        query[key] = { $in: sanitized };
+                    }
+                    continue;
+                }
+                query[key] = value;
+            }
+
+            const [items, total] = await Promise.all([
+                MateriaPrimaModel.find(query)
+                    .skip(skip)
+                    .limit(safeLimit)
+                    .lean(),
+                MateriaPrimaModel.countDocuments(query),
+            ]);
+
+            const filtersWithoutType = { ...query };
+            delete filtersWithoutType.type;
+            const filtersWithoutMedida = { ...query };
+            delete filtersWithoutMedida.medida;
+
+            const [availableTypes, availableMedidas] = await Promise.all([
+                MateriaPrimaModel.distinct("type", filtersWithoutType),
+                MateriaPrimaModel.distinct("medida", filtersWithoutMedida),
+            ]);
+
+            return {
+                items,
+                total,
+                page: safePage,
+                limit: safeLimit,
+                availableTypes,
+                availableMedidas,
+            };
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Error al obtener productos paginados de la DB: ${error.message}`);
+        }
+    }
+
     static async getById(id) {
         try {
             let materiaPrima = await MateriaPrimaModel.findById(id).lean();
@@ -48,6 +100,15 @@ export class MateriaPrimaDAOMongo {
         }
     }
 
+    static async findOneByFields(filter) {
+        try {
+            return await MateriaPrimaModel.findOne(filter).lean();
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Error al buscar materia prima: ${error.message}`);
+        }
+    }
+
     static async delete(id) {
         try {
             let materiaPrimaEliminada = await MateriaPrimaModel.findByIdAndDelete(id).lean();
@@ -58,6 +119,15 @@ export class MateriaPrimaDAOMongo {
         } catch (error) {
             console.error(error);
             throw new Error(`Error al eliminar producto: ${error.message}`);
+        }
+    }
+
+    static async deleteAll() {
+        try {
+            return await MateriaPrimaModel.deleteMany({});
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Error al eliminar todas las materias primas: ${error.message}`);
         }
     }
 

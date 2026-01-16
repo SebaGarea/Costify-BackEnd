@@ -58,27 +58,46 @@ describe("MateriaPrimaController", () => {
   describe("getAll", () => {
     let req, res, next;
     beforeEach(() => {
-      req = {};
+      req = { query: {} };
       res = { json: sinon.stub() };
       next = sinon.stub();
       sinon.restore();
     });
     it("debe retornar materias primas si existen", async () => {
-      sinon.stub(materiaPrimaService, "getAllMateriaPrimas").resolves([{ nombre: "Acero" }]);
+      sinon
+        .stub(materiaPrimaService, "getAllMateriaPrimas")
+        .resolves({
+          items: [{ nombre: "Acero" }],
+          total: 1,
+          page: 1,
+          limit: 10,
+          availableTypes: ["tipo"],
+          availableMedidas: ["medida"],
+        });
       sinon.stub(logger, "info");
       await MateriaPrimaController.getAll(req, res, next);
-      expect(res.json.calledWith({ status: "success", materiasPrimas: [{ nombre: "Acero" }] })).to.be.true;
+      expect(
+        res.json.calledWith({
+          status: "success",
+          materiasPrimas: [{ nombre: "Acero" }],
+          pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+          filtersMeta: { availableTypes: ["tipo"], availableMedidas: ["medida"] },
+        })
+      ).to.be.true;
       expect(logger.info.called).to.be.true;
     });
     it("debe retornar error si no hay materias primas", async () => {
-      sinon.stub(materiaPrimaService, "getAllMateriaPrimas").resolves([]);
+      sinon
+        .stub(materiaPrimaService, "getAllMateriaPrimas")
+        .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [] });
       sinon.stub(logger, "warn");
       await MateriaPrimaController.getAll(req, res, next);
       expect(
         res.json.calledWith({
           status: "success",
           materiasPrimas: [],
-          message: "No hay materias primas registradas",
+          pagination: { total: 0, page: 1, limit: 10, totalPages: 1 },
+          filtersMeta: { availableTypes: [], availableMedidas: [] },
         })
       ).to.be.true;
       expect(next.called).to.be.false;
