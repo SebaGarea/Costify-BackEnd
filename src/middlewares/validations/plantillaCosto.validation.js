@@ -5,7 +5,16 @@ import logger from '../../config/logger.js';
 export const validacionCreatePlantillaCosto = [
   body("nombre").notEmpty().withMessage("El nombre es obligatorio"),
   body("items").isArray({ min: 1 }).withMessage("Debe haber al menos un item"),
-  body("items.*.materiaPrima").notEmpty().withMessage("Cada item debe tener materiaPrima"),
+  body("items").custom((items) => {
+    items.forEach((item, index) => {
+      const tieneMateriaPrima = Boolean(item?.materiaPrima);
+      const tieneValor = item?.valor !== undefined && item?.valor !== null;
+      if (!tieneMateriaPrima && !tieneValor) {
+        throw new Error(`El item ${index + 1} debe tener materiaPrima o un valor personalizado`);
+      }
+    });
+    return true;
+  }),
   body("items.*.cantidad").isFloat({ min: 0.01 }).withMessage("La cantidad debe ser mayor a 0"),
   body("items.*.categoria").notEmpty().withMessage("Cada item debe tener una categoría"),
   body("porcentajesPorCategoria")
@@ -42,7 +51,16 @@ export const validacionUpdatePlantillaCosto = [
   param("id").isMongoId().withMessage("ID inválido"),
   body("nombre").optional().notEmpty().withMessage("El nombre es obligatorio"),
   body("items").optional().isArray({ min: 1 }).withMessage("Debe haber al menos un item"),
-  body("items.*.materiaPrima").optional().notEmpty().withMessage("Cada item debe tener materiaPrima"),
+  body("items").optional().custom((items) => {
+    items.forEach((item, index) => {
+      const tieneMateriaPrima = Boolean(item?.materiaPrima);
+      const tieneValor = item?.valor !== undefined && item?.valor !== null;
+      if (!tieneMateriaPrima && !tieneValor) {
+        throw new Error(`El item ${index + 1} debe tener materiaPrima o un valor personalizado`);
+      }
+    });
+    return true;
+  }),
   body("items.*.cantidad").optional().isFloat({ min: 0.01 }).withMessage("La cantidad debe ser mayor a 0"),
   body("items.*.categoria").optional().notEmpty().withMessage("Cada item debe tener una categoría"),
   body("porcentajesPorCategoria").optional().custom(value => {

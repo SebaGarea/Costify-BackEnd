@@ -52,13 +52,26 @@ class PlantillaCostoService {
 
     // Calcular subtotales por categoría (materiales)
     for (const item of items) {
-      const materiaPrima = await MateriaPrimaModel.findById(item.materiaPrima);
-      if (materiaPrima) {
-        const subtotal = materiaPrima.precio * item.cantidad;
-        costoTotal += subtotal;
-        if (!subtotales[item.categoria]) subtotales[item.categoria] = 0;
-        subtotales[item.categoria] += subtotal;
+      if (!item) continue;
+
+      const cantidad = parseFloat(item.cantidad) || 0;
+      if (cantidad <= 0) continue;
+
+      let precioBase = 0;
+      if (item.materiaPrima) {
+        const materiaPrima = await MateriaPrimaModel.findById(item.materiaPrima);
+        precioBase = materiaPrima ? materiaPrima.precio : item.valor;
+      } else {
+        precioBase = item.valor;
       }
+
+      if (precioBase === undefined || precioBase === null) continue;
+      const precioUnitario = parseFloat(precioBase) || 0;
+
+      const subtotal = precioUnitario * cantidad;
+      costoTotal += subtotal;
+      if (!subtotales[item.categoria]) subtotales[item.categoria] = 0;
+      subtotales[item.categoria] += subtotal;
     }
 
     // Agregar consumibles a subtotales por categoría

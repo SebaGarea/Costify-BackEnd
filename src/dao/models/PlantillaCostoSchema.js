@@ -3,9 +3,17 @@ const { Schema } = mongoose;
 
 // Cada ítem representa un material usado en la plantilla
 const ItemSchema = new Schema({
-  materiaPrima: { type: Schema.Types.ObjectId, ref: 'materias_primas', required: true },
+  materiaPrima: { type: Schema.Types.ObjectId, ref: 'materias_primas', required: false },
+  valor: { type: Number, min: 0, default: 0 },
   cantidad: { type: Number, required: true },
-  categoria: { type: String, required: true } // Carpintería, Herrería, Herrajes, Pintura
+  categoria: { type: String, required: true }, // Carpintería, Herrería, Herrajes, Pintura
+  esPersonalizado: { type: Boolean, default: false },
+  descripcionPersonalizada: { type: String, trim: true },
+  categoriaMP: { type: String, trim: true },
+  tipoMP: { type: String, trim: true },
+  medidaMP: { type: String, trim: true },
+  espesorMP: { type: String, trim: true },
+  nombreMadera: { type: String, trim: true }
 });
 
 // La plantilla de costos
