@@ -1,5 +1,21 @@
 import mongoose, { Schema } from "mongoose";
 
+const MateriaPrimaSnapshotSchema = new Schema(
+  {
+    materiaPrima: { type: Schema.Types.ObjectId, ref: "materias_primas" },
+    nombre: { type: String },
+    categoria: { type: String },
+    type: { type: String },
+    medida: { type: String },
+    espesor: { type: String },
+    precio: { type: Number },
+    cantidadUtilizada: { type: Number },
+    subtotal: { type: Number },
+    actualizadoEn: { type: Date },
+  },
+  { _id: false }
+);
+
 const VentasSchema = new Schema(
   {
     fecha: { type: Date, default: Date.now },
@@ -24,11 +40,22 @@ const VentasSchema = new Schema(
     },
     cantidad: { type: Number, required: true },
     precioManual: { type: Number, default: null },
-  descripcion: { type: String },
+    descripcion: { type: String },
     valorEnvio: { type: Number, default: 0 },
     valorTotal: { type: Number, required: true },
     seña: { type: Number, default: 0 },
     restan: { type: Number, required: true },
+    precioUnitarioSnapshot: { type: Number, default: 0 },
+    snapshotOrigenPrecio: {
+      type: String,
+      enum: ["catalogo", "manual"],
+      default: "manual",
+    },
+    snapshotRegistradoEn: { type: Date, default: Date.now },
+    materiasPrimasSnapshot: {
+      type: [MateriaPrimaSnapshotSchema],
+      default: [],
+    },
     estado: {
       type: String,
       enum: ["pendiente", "en_proceso", "finalizada", "despachada", "cancelada"],

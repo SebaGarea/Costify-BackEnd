@@ -13,7 +13,7 @@ const MateriaPrimaSchema = new Schema({
     precio: {type:Number, min:0, required:true},
     stock: {type:Number, default:0, required:true},
     celdaExcel: {type:Number, required:false}
-})
+}, { timestamps: true })
 
 export const MateriaPrimaModel = mongoose.model(MateriaPrimaCollection, MateriaPrimaSchema);
 
