@@ -362,8 +362,9 @@ export class MateriaPrimaService {
 
             let existing = await this.MateriaPrimaDao.findOneByFields(filter);
             if (!existing && !normalizedEspesor) {
-                const { espesor: _omit, ...rest } = filter;
-                existing = await this.MateriaPrimaDao.findOneByFields(rest);
+                const filterWithoutEspesor = { ...filter };
+                delete filterWithoutEspesor.espesor;
+                existing = await this.MateriaPrimaDao.findOneByFields(filterWithoutEspesor);
             }
 
             const payload = {

@@ -1,60 +1,7 @@
 import { ProductoModel } from "../dao/models/ProductoSchema.js";
 import { PlantillaCostoModel } from "../dao/models/PlantillaCostoSchema.js";
-import { MateriaPrimaModel } from "../dao/models/MateriaPrimaSchema.js";
 import { VentasDAOMongo } from "../dao/index.js";
-
-const buildMateriaSnapshots = async (planillaReferencia) => {
-  if (!planillaReferencia) return [];
-
-  const planillaData = Array.isArray(planillaReferencia?.items)
-    ? planillaReferencia.items
-    : [];
-
-  if (planillaData.length === 0) return [];
-
-  const materiaIds = planillaData
-    .map((item) => {
-      if (!item?.materiaPrima) return null;
-      if (typeof item.materiaPrima === "object" && item.materiaPrima._id) {
-        return item.materiaPrima._id;
-      }
-      return item.materiaPrima;
-    })
-    .filter(Boolean);
-
-  if (materiaIds.length === 0) return [];
-
-  const materias = await MateriaPrimaModel.find({ _id: { $in: materiaIds } }).lean();
-  const materiasMap = new Map(
-    materias.map((mp) => [mp._id.toString(), mp])
-  );
-
-  return planillaData.map((item) => {
-    const materiaId =
-      typeof item.materiaPrima === "object" && item.materiaPrima._id
-        ? item.materiaPrima._id.toString()
-        : String(item.materiaPrima);
-    const materia = materiasMap.get(materiaId) || item.materiaPrima;
-    const precioMateria = Number(materia?.precio ?? 0);
-    const cantidadUtilizada = Number(item.cantidad ?? 0);
-
-    return {
-      materiaPrima:
-        (typeof materia === "object" && materia?._id) || item.materiaPrima || null,
-      nombre: (typeof materia === "object" && materia?.nombre) || "",
-      categoria:
-        (typeof materia === "object" && materia?.categoria) || item.categoria || "",
-      type: (typeof materia === "object" && materia?.type) || "",
-      medida: (typeof materia === "object" && materia?.medida) || "",
-      espesor: (typeof materia === "object" && materia?.espesor) || "",
-      precio: precioMateria,
-      cantidadUtilizada,
-      subtotal: precioMateria * cantidadUtilizada,
-      actualizadoEn:
-        (typeof materia === "object" && materia?.updatedAt) || null,
-    };
-  });
-};
+import { computePlanillaPricing } from "../utils/pricing.js";
 
 const buildVentaSnapshotPayload = async ({ productoDoc, precioManual }) => {
   const snapshot = {
@@ -80,7 +27,15 @@ const buildVentaSnapshotPayload = async ({ productoDoc, precioManual }) => {
     }
 
     if (planillaObjetivo) {
-      snapshot.materiasPrimasSnapshot = await buildMateriaSnapshots(planillaObjetivo);
+      const planillaData =
+        typeof planillaObjetivo.toObject === "function"
+          ? planillaObjetivo.toObject()
+          : planillaObjetivo;
+      const pricing = await computePlanillaPricing(planillaData);
+      if (pricing.unitPrice > 0) {
+        snapshot.precioUnitarioSnapshot = pricing.unitPrice;
+      }
+      snapshot.materiasPrimasSnapshot = pricing.snapshots;
     }
     return snapshot;
   }
@@ -109,24 +64,26 @@ class VentasService {
 
       const precioManual = Number(data.precioManual || 0);
 
-      let valorTotalCalculado = 0;
-      if (hasProducto && producto) {
-        const precioUnitario = producto.precio;
-        valorTotalCalculado = precioUnitario * cantidad + valorEnvio;
-      } else {
-        if (precioManual <= 0) throw new Error("El precio manual debe ser mayor a cero");
-        valorTotalCalculado = precioManual * cantidad + valorEnvio;
+      if (!hasProducto && precioManual <= 0) {
+        throw new Error("El precio manual debe ser mayor a cero");
       }
-
-      const seña = Number(data.seña || 0);
-      if (seña > valorTotalCalculado)
-        throw new Error("La seña no puede ser mayor al total");
-      const restan = valorTotalCalculado - seña;
 
       const snapshotPayload = await buildVentaSnapshotPayload({
         productoDoc: hasProducto ? producto : null,
         precioManual: hasProducto ? null : precioManual,
       });
+
+      const precioUnitarioCalculado = snapshotPayload.precioUnitarioSnapshot;
+      if (!Number.isFinite(precioUnitarioCalculado) || precioUnitarioCalculado <= 0) {
+        throw new Error("No se pudo determinar el precio unitario actual del producto");
+      }
+
+      const valorTotalCalculado = precioUnitarioCalculado * cantidad + valorEnvio;
+
+      const seña = Number(data.seña || 0);
+      if (seña > valorTotalCalculado)
+        throw new Error("La seña no puede ser mayor al total");
+      const restan = valorTotalCalculado - seña;
 
       const ventaLimpia = {
         fecha: data.fecha || new Date(),
@@ -232,45 +189,74 @@ class VentasService {
 
       let valorTotal = 0;
       let productoDocParaSnapshot = null;
-      if (merged.producto) {
-        if (
-          typeof merged.producto === 'object' &&
-          merged.producto.precio &&
-          merged.producto.planillaCosto
-        ) {
-          productoDocParaSnapshot = merged.producto;
+      let snapshotPayload = null;
+      let precioUnitarioParaCalculo = Number(
+        typeof merged.precioUnitarioSnapshot !== 'undefined'
+          ? merged.precioUnitarioSnapshot
+          : typeof actual.precioUnitarioSnapshot !== 'undefined'
+            ? actual.precioUnitarioSnapshot
+            : 0
+      );
+
+      if (priceInputsChanged) {
+        if (merged.producto) {
+          if (
+            typeof merged.producto === 'object' &&
+            merged.producto.planillaCosto
+          ) {
+            productoDocParaSnapshot = merged.producto;
+          } else {
+            const productoId =
+              typeof merged.producto === 'object' && merged.producto._id
+                ? merged.producto._id
+                : merged.producto;
+            productoDocParaSnapshot = await ProductoModel.findById(productoId).populate('planillaCosto');
+          }
+          if (!productoDocParaSnapshot) throw new Error('Producto no encontrado');
+          snapshotPayload = await buildVentaSnapshotPayload({
+            productoDoc: productoDocParaSnapshot,
+            precioManual: null,
+          });
+          merged.precioManual = null;
         } else {
-          const productoId =
-            typeof merged.producto === 'object' && merged.producto._id
-              ? merged.producto._id
-              : merged.producto;
-          productoDocParaSnapshot = await ProductoModel.findById(productoId).populate('planillaCosto');
+          const precioManual = Number(
+            typeof merged.precioManual !== 'undefined' && merged.precioManual !== null
+              ? merged.precioManual
+              : typeof actual.precioManual !== 'undefined'
+                ? actual.precioManual
+                : 0
+          );
+          if (precioManual <= 0) throw new Error('El precio manual debe ser mayor a cero');
+          snapshotPayload = await buildVentaSnapshotPayload({
+            productoDoc: null,
+            precioManual,
+          });
+          merged.precioManual = precioManual;
         }
-        if (!productoDocParaSnapshot) throw new Error('Producto no encontrado');
-        valorTotal = Number(productoDocParaSnapshot.precio || 0) * cantidad + valorEnvioActual;
-        merged.precioManual = null;
-      } else {
-        const precioManual = Number(
+        precioUnitarioParaCalculo = snapshotPayload.precioUnitarioSnapshot;
+      } else if (!merged.producto) {
+        const precioManualActual = Number(
           typeof merged.precioManual !== 'undefined' && merged.precioManual !== null
             ? merged.precioManual
             : typeof actual.precioManual !== 'undefined'
               ? actual.precioManual
               : 0
         );
-        if (precioManual <= 0) throw new Error('El precio manual debe ser mayor a cero');
-        valorTotal = precioManual * cantidad + valorEnvioActual;
-        merged.precioManual = precioManual;
+        if (precioManualActual <= 0) throw new Error('El precio manual debe ser mayor a cero');
+        merged.precioManual = precioManualActual;
       }
+
+      if (!Number.isFinite(precioUnitarioParaCalculo) || precioUnitarioParaCalculo <= 0) {
+        throw new Error('No se pudo determinar el precio unitario actual del producto');
+      }
+
+      valorTotal = precioUnitarioParaCalculo * cantidad + valorEnvioActual;
 
       if (señaActual > valorTotal) throw new Error('La seña no puede ser mayor al total');
       merged.valorTotal = valorTotal;
       merged.restan = valorTotal - señaActual;
 
       if (priceInputsChanged) {
-        const snapshotPayload = await buildVentaSnapshotPayload({
-          productoDoc: merged.producto ? productoDocParaSnapshot : null,
-          precioManual: merged.producto ? null : merged.precioManual,
-        });
         merged.precioUnitarioSnapshot = snapshotPayload.precioUnitarioSnapshot;
         merged.snapshotOrigenPrecio = snapshotPayload.snapshotOrigenPrecio;
         merged.snapshotRegistradoEn = snapshotPayload.snapshotRegistradoEn;
