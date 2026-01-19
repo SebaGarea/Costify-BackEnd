@@ -16,6 +16,23 @@ const ItemSchema = new Schema({
   nombreMadera: { type: String, trim: true }
 });
 
+const ExtraSimpleSchema = new Schema(
+  {
+    valor: { type: Number, default: 0 },
+    porcentaje: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const CampoPersonalizadoSchema = new Schema(
+  {
+    nombre: { type: String, trim: true },
+    valor: { type: Number, default: 0 },
+    porcentaje: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
 // La plantilla de costos
 const PlantillaCostoSchema = new Schema({
   nombre: { type: String, required: true },
@@ -24,7 +41,7 @@ const PlantillaCostoSchema = new Schema({
   // Campos de categorización para filtrado
   categoria: { 
     type: String, 
-    enum: ['Herrería', 'Carpintería', 'Pintura', 'Mixta'], 
+    enum: ['Herrería', 'Carpintería', 'Pintura', 'Otros', 'Mixta'], 
     required: false, // Opcional para compatibilidad con plantillas existentes
     default: 'Mixta'
   },
@@ -50,6 +67,12 @@ const PlantillaCostoSchema = new Schema({
     of: Number,
     default: () => new Map()
   },
+  extras: {
+    creditoCamioneta: { type: ExtraSimpleSchema, default: () => ({}) },
+    envio: { type: ExtraSimpleSchema, default: () => ({}) },
+    camposPersonalizados: { type: [CampoPersonalizadoSchema], default: [] },
+  },
+  extrasTotal: { type: Number, default: 0 },
   costoTotal: { type: Number, default: 0 },
   subtotales: { // Subtotales por categoría
     type: Map,

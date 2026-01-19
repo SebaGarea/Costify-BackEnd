@@ -7,6 +7,49 @@ class PlantillaCostoService {
     this.dao = dao;
   }
 
+  parseNumber(value) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  normalizarExtras(extras = {}) {
+    const normalizeSimple = (extra = {}) => ({
+      valor: this.parseNumber(extra?.valor),
+      porcentaje: this.parseNumber(extra?.porcentaje),
+    });
+
+    const camposPersonalizados = Array.isArray(extras.camposPersonalizados)
+      ? extras.camposPersonalizados
+          .map((campo) => ({
+            nombre: campo.nombre?.trim() || '',
+            valor: this.parseNumber(campo.valor),
+            porcentaje: this.parseNumber(campo.porcentaje),
+          }))
+          .filter((campo) => campo.nombre || campo.valor > 0)
+      : [];
+
+    return {
+      creditoCamioneta: normalizeSimple(extras.creditoCamioneta),
+      envio: normalizeSimple(extras.envio),
+      camposPersonalizados,
+    };
+  }
+
+  calcularTotalExtras(extras = {}) {
+    const entries = [];
+    if (extras.creditoCamioneta) entries.push(extras.creditoCamioneta);
+    if (extras.envio) entries.push(extras.envio);
+    if (Array.isArray(extras.camposPersonalizados)) {
+      entries.push(...extras.camposPersonalizados);
+    }
+
+    return entries.reduce((total, extra) => {
+      const valorBase = this.parseNumber(extra.valor);
+      const porcentaje = this.parseNumber(extra.porcentaje);
+      return total + valorBase * (1 + porcentaje / 100);
+    }, 0);
+  }
+
   // Determinar categoría principal basándose en los items
   determinarCategoria(subtotales) {
     if (!subtotales || Object.keys(subtotales).length === 0) return 'Otro';
@@ -38,14 +81,15 @@ class PlantillaCostoService {
     const mapeoCategoria = {
       'herreria': 'Herrería',
       'carpinteria': 'Carpintería', 
-      'pintura': 'Pintura'
+      'pintura': 'Pintura',
+      'otros': 'Otros'
     };
     
     return mapeoCategoria[categoriaPrincipal.toLowerCase()] || 'Mixta';
   }
 
   // Calcula el costo total y el precio final de la plantilla
-  async calcularCostos(items, porcentajesPorCategoria, consumibles = {}) {
+  async calcularCostos(items, porcentajesPorCategoria, consumibles = {}, extras = null) {
     let costoTotal = 0;
     let precioFinal = 0;
     const subtotales = {};
@@ -90,12 +134,23 @@ class PlantillaCostoService {
       precioFinal += subtotales[categoria] * (1 + porcentaje / 100);
     }
 
-    return { costoTotal, precioFinal, subtotales };
+    const extrasData = extras ?? this.normalizarExtras();
+    const extrasTotal = this.calcularTotalExtras(extrasData);
+    costoTotal += extrasTotal;
+    precioFinal += extrasTotal;
+
+    return { costoTotal, precioFinal, subtotales, extrasTotal };
   }
 
   async createPlantilla(data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags } = data;
-    const { costoTotal, precioFinal, subtotales } = await this.calcularCostos(items, porcentajesPorCategoria, consumibles);
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras } = data;
+    const extrasNormalizados = this.normalizarExtras(extras);
+    const { costoTotal, precioFinal, subtotales, extrasTotal } = await this.calcularCostos(
+      items,
+      porcentajesPorCategoria,
+      consumibles,
+      extrasNormalizados
+    );
     const ganancia = precioFinal - costoTotal; // Calcular ganancia
     
     // Determinar categoría automáticamente si no se proporciona
@@ -109,6 +164,8 @@ class PlantillaCostoService {
       tags: tags || [],
       porcentajesPorCategoria,
       consumibles,
+      extras: extrasNormalizados,
+      extrasTotal,
       costoTotal,
       subtotales,
       precioFinal,
@@ -128,8 +185,14 @@ class PlantillaCostoService {
 
   // Actualizar una plantilla existente
   async updatePlantilla(id, data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags } = data;
-    const { costoTotal, precioFinal, subtotales } = await this.calcularCostos(items, porcentajesPorCategoria, consumibles);
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras } = data;
+    const extrasNormalizados = this.normalizarExtras(extras);
+    const { costoTotal, precioFinal, subtotales, extrasTotal } = await this.calcularCostos(
+      items,
+      porcentajesPorCategoria,
+      consumibles,
+      extrasNormalizados
+    );
     const ganancia = precioFinal - costoTotal; // Calcular ganancia
     
     // Determinar categoría automática si no se proporciona
@@ -140,6 +203,8 @@ class PlantillaCostoService {
       items,
       porcentajesPorCategoria,
       consumibles,
+      extras: extrasNormalizados,
+      extrasTotal,
       costoTotal,
       subtotales,
       precioFinal,

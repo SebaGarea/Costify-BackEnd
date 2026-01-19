@@ -3,18 +3,18 @@ import sinon from 'sinon';
 import { PlantillaCostoService } from '../../../src/services/plantillaCosto.service.js';
 
 describe('PlantillaCostoService', () => {
-  const mockDAO = {
-    create: sinon.stub(),
-    getAll: sinon.stub(),
-    getById: sinon.stub(),
-    update: sinon.stub(),
-    delete: sinon.stub(),
-  };
+  let mockDAO;
   let service;
 
   beforeEach(() => {
+    mockDAO = {
+      create: sinon.stub(),
+      getAll: sinon.stub(),
+      getById: sinon.stub(),
+      update: sinon.stub(),
+      delete: sinon.stub(),
+    };
     service = new PlantillaCostoService(mockDAO);
-    sinon.resetHistory();
   });
 
   describe('createPlantilla', () => {
@@ -24,6 +24,84 @@ describe('PlantillaCostoService', () => {
       const result = await service.createPlantilla(data);
       expect(result._id).to.equal('p1');
       expect(mockDAO.create.calledOnce).to.be.true;
+    });
+
+    it('debe incluir los totales de la categoría "otros" en el payload', async () => {
+      mockDAO.create.resolves({ _id: 'p2', nombre: 'Con Otros' });
+      const payload = {
+        nombre: 'Con Otros',
+        items: [
+          {
+            categoria: 'otros',
+            valor: 500,
+            cantidad: 2,
+            esPersonalizado: true,
+          },
+        ],
+        porcentajesPorCategoria: { otros: 25 },
+        consumibles: { otros: 100 },
+        tags: [],
+      };
+
+      await service.createPlantilla(payload);
+
+      const subtotalesMatcher = sinon.match(
+        (value) => {
+          const subtotalOtros = value?.otros ?? value?.get?.('otros');
+          return subtotalOtros === 1100;
+        },
+        'subtotales.otros === 1100'
+      );
+
+      sinon.assert.calledWithMatch(
+        mockDAO.create,
+        sinon.match({
+          costoTotal: 1100,
+          precioFinal: 1375,
+          ganancia: 275,
+          categoria: 'Otros',
+          subtotales: subtotalesMatcher,
+        })
+      );
+    });
+
+    it('debe normalizar y persistir los extras con su total', async () => {
+      mockDAO.create.resolves({ _id: 'p3', nombre: 'Con Extras' });
+      const extrasPayload = {
+        creditoCamioneta: { valor: '100', porcentaje: '10' },
+        envio: { valor: 50 },
+        camposPersonalizados: [
+          { nombre: 'Adicional', valor: 200, porcentaje: 5 },
+          { nombre: '   ', valor: 0, porcentaje: 0 },
+        ],
+      };
+
+      await service.createPlantilla({
+        nombre: 'Con Extras',
+        items: [],
+        porcentajesPorCategoria: {},
+        consumibles: {},
+        extras: extrasPayload,
+      });
+
+      const extrasEsperados = {
+        creditoCamioneta: { valor: 100, porcentaje: 10 },
+        envio: { valor: 50, porcentaje: 0 },
+        camposPersonalizados: [{ nombre: 'Adicional', valor: 200, porcentaje: 5 }],
+      };
+
+      sinon.assert.calledWithMatch(
+        mockDAO.create,
+        sinon.match({
+          extras: sinon.match((extras) => {
+            expect(extras).to.deep.equal(extrasEsperados);
+            return true;
+          }, 'extras normalizados'),
+          extrasTotal: 370,
+          costoTotal: 370,
+          precioFinal: 370,
+        })
+      );
     });
   });
 
