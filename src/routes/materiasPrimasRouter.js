@@ -9,6 +9,7 @@ const upload = multer();
 export const router=Router();
 
 router.get('/',passport.authenticate("jwt", { session: false }), MateriaPrimaController.getAll);
+router.get('/meta',passport.authenticate("jwt", { session: false }), MateriaPrimaController.getFiltersMeta);
 router.get('/categories',passport.authenticate("jwt", { session: false }), MateriaPrimaController.getAllCategories);
 router.get('/category/:category',passport.authenticate("jwt", { session: false }), MateriaPrimaController.getByCategory);
 router.get('/type/:type', passport.authenticate("jwt", { session: false }),validacionType,MateriaPrimaController.getByType);

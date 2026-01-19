@@ -1,5 +1,23 @@
 import { MateriaPrimaModel } from './models/index.js';
 
+const buildQueryFromFilters = (filters = {}) => {
+    const query = {};
+    for (const [key, value] of Object.entries(filters || {})) {
+        if (value === undefined || value === null || value === "") {
+            continue;
+        }
+        if (Array.isArray(value)) {
+            const sanitized = value.map((item) => item?.toString().trim()).filter(Boolean);
+            if (sanitized.length > 0) {
+                query[key] = { $in: sanitized };
+            }
+            continue;
+        }
+        query[key] = value;
+    }
+    return query;
+};
+
 export class MateriaPrimaDAOMongo {
 
     static async create(MateriaPrima){
@@ -27,20 +45,7 @@ export class MateriaPrimaDAOMongo {
             const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
             const safePage = Math.max(1, Number(page) || 1);
             const skip = (safePage - 1) * safeLimit;
-            const query = {};
-            for (const [key, value] of Object.entries(filters || {})) {
-                if (value === undefined || value === null || value === "") {
-                    continue;
-                }
-                if (Array.isArray(value)) {
-                    const sanitized = value.map((item) => item?.toString().trim()).filter(Boolean);
-                    if (sanitized.length > 0) {
-                        query[key] = { $in: sanitized };
-                    }
-                    continue;
-                }
-                query[key] = value;
-            }
+            const query = buildQueryFromFilters(filters);
 
             const [items, total] = await Promise.all([
                 MateriaPrimaModel.find(query)
@@ -71,6 +76,29 @@ export class MateriaPrimaDAOMongo {
         } catch (error) {
             console.error(error);
             throw new Error(`Error al obtener productos paginados de la DB: ${error.message}`);
+        }
+    }
+
+    static async getFiltersMeta({ filters = {} } = {}) {
+        try {
+            const query = buildQueryFromFilters(filters);
+            const filtersWithoutType = { ...query };
+            delete filtersWithoutType.type;
+            const filtersWithoutMedida = { ...query };
+            delete filtersWithoutMedida.medida;
+
+            const [availableTypes, availableMedidas] = await Promise.all([
+                MateriaPrimaModel.distinct("type", filtersWithoutType),
+                MateriaPrimaModel.distinct("medida", filtersWithoutMedida),
+            ]);
+
+            return {
+                availableTypes,
+                availableMedidas,
+            };
+        } catch (error) {
+            console.error(error);
+            throw new Error(`Error al obtener metadatos de filtros: ${error.message}`);
         }
     }
 

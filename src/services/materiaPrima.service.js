@@ -305,6 +305,10 @@ export class MateriaPrimaService {
         return await this.MateriaPrimaDao.getAllCategories();
     }
 
+    async getMateriaPrimaFiltersMeta(filters = {}) {
+        return await this.MateriaPrimaDao.getFiltersMeta({ filters });
+    }
+
     async getMateriaPrimasByType(type) {
         return await this.MateriaPrimaDao.getByType(type);
     }

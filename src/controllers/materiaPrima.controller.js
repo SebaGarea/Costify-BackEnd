@@ -68,6 +68,36 @@ export class MateriaPrimaController {
     }
   }
 
+  static async getFiltersMeta(req, res, next) {
+    try {
+      const { category, type, medida } = req.query;
+      const filters = {};
+      if (category) filters.categoria = category;
+      const parsedType = parseTypeFilter(type);
+      if (Array.isArray(parsedType) && parsedType.length > 0) {
+        filters.type = parsedType;
+      } else if (parsedType) {
+        filters.type = parsedType;
+      }
+      if (medida) filters.medida = medida;
+
+      const meta = await materiaPrimaService.getMateriaPrimaFiltersMeta(filters);
+      const availableTypes = meta?.availableTypes || [];
+      const availableMedidas = meta?.availableMedidas || [];
+      logger.info("Metadatos de filtros obtenidos exitosamente");
+      return res.json({
+        status: "success",
+        filtersMeta: {
+          availableTypes,
+          availableMedidas,
+        },
+      });
+    } catch (error) {
+      logger.error("Error al obtener metadatos de filtros", { error });
+      next(error);
+    }
+  }
+
   static async getById(req, res, next) {
     try {
       const { id } = req.params;
