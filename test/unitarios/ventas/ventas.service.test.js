@@ -18,8 +18,10 @@ describe('VentasService', () => {
   beforeEach(() => {
     service = new VentasService(mockDAO);
     sinon.resetHistory();
-    // Stub global para ProductoModel.findById
-    productoStub = sinon.stub(ProductoSchema.ProductoModel, 'findById').resolves({ precio: 100 });
+    // Stub global para ProductoModel.findById con soporte para populate()
+    productoStub = sinon.stub(ProductoSchema.ProductoModel, 'findById').callsFake(() => ({
+      populate: sinon.stub().resolves({ precio: 100 })
+    }));
   });
   afterEach(() => {
     productoStub.restore();

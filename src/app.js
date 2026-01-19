@@ -12,6 +12,7 @@ import {
   productoRouter,
   ventasRouter,
   userRouter,
+  listaCompraRouter,
 } from "./routes/index.js";
 
 import { errorHandler } from "./middlewares/error.handler.js";
@@ -44,6 +45,7 @@ app.use("/api/plantillas", plantillaCostoRouter);
 app.use("/api/productos", productoRouter);
 app.use("/api/ventas", ventasRouter);
 app.use("/api/usuarios", userRouter);
+app.use("/api/lista-compras", listaCompraRouter);
 
 setupSwagger(app);
 app.use(errorHandler);

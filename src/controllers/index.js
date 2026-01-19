@@ -3,3 +3,4 @@ export * from './producto.controller.js';
 export * from './usuarios.controller.js';
 export * from './ventas.controller.js';
 export * from './plantillaCosto.controller.js';
+export * from './listaCompra.controller.js';
