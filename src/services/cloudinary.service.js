@@ -3,8 +3,28 @@ import logger from '../config/logger.js';
 
 const PRODUCT_FOLDER = 'costify/productos';
 
+const hasCloudinaryConfig = () => {
+  const requiredKeys = [
+    process.env.CLOUDINARY_CLOUD_NAME,
+    process.env.CLOUDINARY_API_KEY,
+    process.env.CLOUDINARY_API_SECRET,
+  ];
+
+  const isConfigured = requiredKeys.every((value) => typeof value === 'string' && value.trim().length > 0);
+
+  if (!isConfigured) {
+    logger.warn('Cloudinary no está configurado, se omiten operaciones de subida/eliminación.');
+  }
+
+  return isConfigured;
+};
+
 export const uploadProductImages = async (files = []) => {
   if (!files || files.length === 0) {
+    return { urls: [], publicIds: [] };
+  }
+
+  if (!hasCloudinaryConfig()) {
     return { urls: [], publicIds: [] };
   }
 
@@ -24,6 +44,10 @@ export const uploadProductImages = async (files = []) => {
 
 export const deleteCloudinaryAssets = async (publicIds = []) => {
   if (!publicIds || publicIds.length === 0) {
+    return;
+  }
+
+  if (!hasCloudinaryConfig()) {
     return;
   }
 
