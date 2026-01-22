@@ -22,6 +22,8 @@
  *           type: string
  *         medida:
  *           type: string
+ *         unidad:
+ *           type: string
  *         espesor:
  *           type: string
  *         precio:

@@ -1,18 +1,23 @@
 import { ListaCompraDAOMongo } from "../dao/index.js";
 import { buildDefaultSectionItems } from "../dao/models/index.js";
 
-const SECTION_KEYS = ["herreria", "carpinteria", "pintura"];
+const SECTION_KEYS = ["herreria", "carpinteria", "pintura", "otros"];
 
 const normalizeSectionItems = (value) => {
   const base = buildDefaultSectionItems();
   if (!value || typeof value !== "object") {
     return base;
   }
+
   const result = { ...base };
-  SECTION_KEYS.forEach((key) => {
-    const items = value[key];
-    result[key] = Array.isArray(items) ? items : [];
+  Object.entries(value).forEach(([key, items]) => {
+    if (Array.isArray(items)) {
+      result[key] = items;
+    } else if (!(key in result)) {
+      result[key] = [];
+    }
   });
+
   return result;
 };
 

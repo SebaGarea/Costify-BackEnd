@@ -6,6 +6,7 @@ export const buildDefaultSectionItems = () => ({
   herreria: [],
   carpinteria: [],
   pintura: [],
+  otros: [],
 });
 
 const ListaCompraSchema = new Schema(

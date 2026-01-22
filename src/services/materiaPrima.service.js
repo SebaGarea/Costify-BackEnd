@@ -76,6 +76,27 @@ const FAMILY_CATEGORY_MAP = {
     "0329": "chapa",
     "0330": "chapa",
     "0332": "chapa",
+
+    // Maderas
+    "madera": "maderas",
+    "maderas": "maderas",
+
+    // Proteccion
+    "proteccion": "proteccion",
+    "protecciones": "proteccion",
+
+    // Herrajes
+    "herrajes": "herrajes",
+
+    // Insumos
+    "insumos": "insumos",
+
+    // Hierro
+    "hierro": "hierro",
+
+    // Caños
+    "canos": "caño",
+    "cano": "caño",
 };
 
 const DEFAULT_CATEGORY = "sin_categoria";
@@ -121,6 +142,15 @@ const ALLOWED_FAMILY_CODES = new Set([
     "0685",
     "1030",
     "1060",
+    "madera",
+    "maderas",
+    "proteccion",
+    "protecciones",
+    "herrajes",
+    "insumos",
+    "hierro",
+    "canos",
+    "cano",
 ]);
 
 const PREFIX_MAP = {
@@ -142,7 +172,14 @@ const capitalizeWord = (word = "") => {
 const normalizeFamilyCode = (value = "") => {
     const raw = value?.toString().trim();
     if (!raw) return "0000";
-    return raw.padStart(4, "0");
+    if (/^\d+$/.test(raw)) {
+        return raw.padStart(4, "0");
+    }
+    return raw
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_");
 };
 
 const getCategoryFromFamily = (familyCode) => ({
@@ -266,6 +303,30 @@ const parseNumber = (value) => {
 
 const pickPrecio = (row) => parseNumber(row["PRECIO_X_BARRA_FINAL"]);
 
+const sanitizeUnidadValue = (value) => {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.toString().trim();
+    return trimmed || null;
+};
+
+const pickUnidad = (row) => {
+    const candidateKeys = [
+        "UNIDAD",
+        "UNIDAD_MEDIDA",
+        "UNIDAD MEDIDA",
+        "UNIDAD_MED",
+        "MEDIDA_UNIDAD",
+        "UNIDADMEDIDA",
+    ];
+    for (const key of candidateKeys) {
+        const candidate = sanitizeUnidadValue(row[key]);
+        if (candidate) {
+            return candidate;
+        }
+    }
+    return "unidad";
+};
+
 
 export class MateriaPrimaService {
     constructor(dao){
@@ -345,6 +406,7 @@ export class MateriaPrimaService {
             const descripcion = row.DESCRIPCION ?? "";
             const { nombre, medida, espesor } = parseDescripcion(descripcion);
             const precio = pickPrecio(row);
+            const unidad = pickUnidad(row);
             if (!nombre || !medida) {
                 summary.skipped.push({ row: rowNumber, reason: "Descripción incompleta" });
                 continue;
@@ -378,6 +440,7 @@ export class MateriaPrimaService {
                 medida,
                 espesor: normalizedEspesor,
                 precio,
+                unidad,
                 celdaExcel: rowNumber,
             };
 
