@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { usuariosService, invitacionesService, emailService } from "../services/index.js";
+import { usuariosService, invitacionesService } from "../services/index.js";
 import { generaHash, validaHash } from "../config/index.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 
@@ -143,9 +143,6 @@ export class UsuariosController {
   }
 
   static async loginUsuario(req, res) {
-    if (req.user.emailVerified === false) {
-      return res.status(403).json({ mensaje: "Debes verificar tu correo antes de iniciar sesión" });
-    }
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
       expiresIn: "8h",
     });
@@ -185,33 +182,22 @@ export class UsuariosController {
         return res.status(409).json({ mensaje: "El email ya se encuentra registrado" });
       }
 
-      const verificationToken = crypto.randomBytes(40).toString("hex");
-      const verificationExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
-
       const usuario = await usuariosService.createUsuario({
         first_name,
         last_name,
         email: normalizedEmail,
         password,
         role: invitation.role || "user",
-        emailVerified: false,
-        verificationToken: hashToken(verificationToken),
-        verificationExpires,
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpires: null,
         invitationCode: invitation.code,
       });
 
       await invitacionesService.markInvitationUsed(invitation._id, usuario._id);
 
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
-      const verificationUrl = `${baseUrl}/api/usuarios/verify-email?token=${verificationToken}`;
-      await emailService.sendVerificationEmail({
-        to: normalizedEmail,
-        name: first_name,
-        verificationUrl,
-      });
-
-      logger.info('Usuario registrado pendiente de verificación', { id: usuario._id });
-      return res.status(201).json({ mensaje: "Registro exitoso. Revisa tu correo para activar la cuenta." });
+      logger.info('Usuario registrado con invitación', { id: usuario._id });
+      return res.status(201).json({ mensaje: "Registro exitoso. Ya puedes iniciar sesión." });
     } catch (error) {
       logger.error('Error en registro con invitación', { error: error.message, stack: error.stack });
       return res.status(400).json({ error: error.message });
