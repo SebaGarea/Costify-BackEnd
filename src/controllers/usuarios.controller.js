@@ -8,6 +8,18 @@ import dotenv from "dotenv";
 import logger from "../config/logger.js";
 dotenv.config();
 
+const sanitizeUser = (usuario) => {
+  if (!usuario) return null;
+  const {
+    password,
+    verificationToken,
+    verificationExpires,
+    __v,
+    ...rest
+  } = usuario;
+  return rest;
+};
+
 const normalizeOrigin = (value) => {
   if (!value) return null;
   try {
@@ -147,7 +159,8 @@ export class UsuariosController {
       expiresIn: "8h",
     });
     logger.info('Login local exitoso', { id: req.user._id });
-    res.json({ mensaje: "Login local exitoso", token, usuario: req.user });
+    const usuario = sanitizeUser(req.user);
+    res.json({ mensaje: "Login local exitoso", token, usuario });
   }
 
   static async loginGoogleCallback(req, res) {
@@ -291,6 +304,39 @@ export class UsuariosController {
     }
   }
 
+  static async updatePerfil(req, res, next) {
+    try {
+      const userId = req.user?._id;
+      if (!userId) {
+        return res.status(401).json({ error: "No autorizado" });
+      }
+
+      const { avatar, themePreference, statusMessage } = req.body;
+      const updates = {};
+
+      if (typeof avatar !== "undefined") updates.avatar = avatar;
+      if (typeof themePreference !== "undefined") updates.themePreference = themePreference;
+      if (typeof statusMessage !== "undefined") updates.statusMessage = statusMessage?.trim() ?? "";
+
+      if (!Object.keys(updates).length) {
+        return res.status(400).json({ error: "No se recibieron cambios para actualizar" });
+      }
+
+      const usuarioActualizado = await usuariosService.updateUsuario(userId, updates);
+      if (!usuarioActualizado) {
+        logger.warn('Intento de actualizar perfil con usuario inexistente', { id: userId });
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      const usuario = sanitizeUser(usuarioActualizado);
+      logger.info('Perfil de usuario actualizado', { id: userId });
+      return res.status(200).json({ mensaje: "Perfil actualizado", usuario });
+    } catch (error) {
+      logger.error('Error al actualizar perfil', { error: error.message, stack: error.stack });
+      next(error);
+    }
+  }
+
   static async crearInvitacion(req, res) {
     try {
       const { email, role = "user", maxUses = 1, expiresAt } = req.body;
@@ -316,7 +362,8 @@ export class UsuariosController {
   }
 
   static async currentUsuario(req, res) {
-    res.status(200).json({ usuario: req.user });
+    const usuario = sanitizeUser(req.user);
+    res.status(200).json({ usuario });
     logger.info('Usuario actual obtenido', { id: req.user._id });
   }
 }

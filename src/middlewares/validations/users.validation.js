@@ -93,3 +93,29 @@ export const validacionChangePassword = [
     next();
   },
 ];
+
+export const validacionPerfil = [
+  body("avatar")
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("La URL del avatar es inválida"),
+  body("themePreference")
+    .optional({ nullable: true })
+    .isIn(["light", "dark"])
+    .withMessage("El tema debe ser 'light' o 'dark'"),
+  body("statusMessage")
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ max: 160 })
+    .withMessage("El mensaje personal debe tener máximo 160 caracteres"),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación de perfil fallida', { errores: errors.array() });
+      return res.status(400).json({ errores: errors.array() });
+    }
+    next();
+  },
+];

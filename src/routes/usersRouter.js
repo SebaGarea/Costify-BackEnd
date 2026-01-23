@@ -9,6 +9,7 @@ import {
   validacionSetPassword,
   validacionIdUser,
   validacionChangePassword,
+  validacionPerfil,
 } from "../middlewares/validations/index.js";
 
 export const router = express.Router();
@@ -64,6 +65,13 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   requireRole("admin"),
   UsuariosController.listarInvitaciones
+);
+
+router.put(
+  "/perfil",
+  passport.authenticate("jwt", { session: false }),
+  validacionPerfil,
+  UsuariosController.updatePerfil
 );
 
 router.get(

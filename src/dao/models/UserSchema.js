@@ -41,5 +41,20 @@ export const usuariosModelo = mongoose.model('users', new mongoose.Schema({
     },
     googleId: {
         type: String
+    },
+    avatar: {
+        type: String,
+        maxlength: 500,
+        default: ""
+    },
+    themePreference: {
+        type: String,
+        enum: ["light", "dark"],
+        default: "dark"
+    },
+    statusMessage: {
+        type: String,
+        maxlength: 160,
+        default: ""
     }
 }));
