@@ -5,3 +5,5 @@ export * from './ventas.service.js';
 export * from './plantillaCosto.service.js';
 export * from './cloudinary.service.js';
 export * from './listaCompra.service.js';
+export * from './invitaciones.service.js';
+export * from './email.service.js';

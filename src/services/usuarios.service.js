@@ -16,6 +16,20 @@ export class UsuariosService {
        return await this.usuariosDAO.getById(id);
   }
 
+  async getUsuarioByEmail(email) {
+    return await this.usuariosDAO.getBy({ email });
+  }
+
+  async createUsuario(datos) {
+    if (datos.password) {
+      datos.password = this.hashFn(datos.password);
+    }
+    if (datos.email) {
+      datos.email = datos.email.trim().toLowerCase();
+    }
+    return await this.usuariosDAO.create(datos);
+  }
+
   async updateUsuario(id, datosActualizados) {
     if (datosActualizados.password) {
       datosActualizados.password = this.hashFn(datosActualizados.password);

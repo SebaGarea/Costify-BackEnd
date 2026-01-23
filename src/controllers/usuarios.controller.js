@@ -1,10 +1,50 @@
-import { usuariosService } from "../services/index.js";
+import crypto from "crypto";
+import { usuariosService, invitacionesService, emailService } from "../services/index.js";
+import { generaHash, validaHash } from "../config/index.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import logger from "../config/logger.js";
 dotenv.config();
+
+const normalizeOrigin = (value) => {
+  if (!value) return null;
+  try {
+    const decoded = typeof value === "string" ? decodeURIComponent(value) : value;
+    const url = new URL(decoded);
+    return url.origin;
+  } catch (error) {
+    return null;
+  }
+};
+
+const getAllowedFrontendOrigins = () => {
+  const primary = process.env.FRONTEND_URL || "http://localhost:5173";
+  const extra = process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(",").map((entry) => entry.trim()).filter(Boolean)
+    : [];
+  const origins = new Set();
+
+  [primary, ...extra].forEach((entry) => {
+    const origin = normalizeOrigin(entry);
+    if (origin) origins.add(origin);
+  });
+
+  if (!origins.size) {
+    origins.add("http://localhost:5173");
+  }
+
+  return Array.from(origins);
+};
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+const buildFrontendRedirect = (path = "") => {
+  const base = getAllowedFrontendOrigins()[0];
+  return `${base}${path}`;
+};
 
 export class UsuariosController {
   static async getUsuarios(req, res, next) {
@@ -103,6 +143,9 @@ export class UsuariosController {
   }
 
   static async loginUsuario(req, res) {
+    if (req.user.emailVerified === false) {
+      return res.status(403).json({ mensaje: "Debes verificar tu correo antes de iniciar sesión" });
+    }
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
       expiresIn: "8h",
     });
@@ -118,7 +161,13 @@ export class UsuariosController {
         { expiresIn: "1h" }
       );
       logger.info('Login con Google exitoso', { id: req.user._id });
-      return res.redirect(`http://localhost:8080/?token=${token}`);    
+      const allowedOrigins = getAllowedFrontendOrigins();
+      const fallbackOrigin = allowedOrigins[0];
+      const requestedOrigin = normalizeOrigin(req.query.state);
+      const targetOrigin = allowedOrigins.includes(requestedOrigin)
+        ? requestedOrigin
+        : fallbackOrigin;
+      return res.redirect(`${targetOrigin}/?token=${token}`);
     } catch (error) {
       logger.error('Error en loginGoogleCallback', { error: error.message, stack: error.stack });
       res.status(500).json({ error: "Error en login con Google" });
@@ -126,11 +175,80 @@ export class UsuariosController {
   }
 
   static async registroUsuario(req, res) {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    res.json({ mensaje: "Registro exitoso", token, usuario: req.user });
-    logger.info('Usuario registrado exitosamente', { id: req.user._id });
+    const { first_name, last_name, email, password, invitationCode } = req.body;
+
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const invitation = await invitacionesService.validateInvitation(invitationCode, normalizedEmail);
+      const existente = await usuariosService.getUsuarioByEmail(normalizedEmail);
+      if (existente) {
+        return res.status(409).json({ mensaje: "El email ya se encuentra registrado" });
+      }
+
+      const verificationToken = crypto.randomBytes(40).toString("hex");
+      const verificationExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+
+      const usuario = await usuariosService.createUsuario({
+        first_name,
+        last_name,
+        email: normalizedEmail,
+        password,
+        role: invitation.role || "user",
+        emailVerified: false,
+        verificationToken: hashToken(verificationToken),
+        verificationExpires,
+        invitationCode: invitation.code,
+      });
+
+      await invitacionesService.markInvitationUsed(invitation._id, usuario._id);
+
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const verificationUrl = `${baseUrl}/api/usuarios/verify-email?token=${verificationToken}`;
+      await emailService.sendVerificationEmail({
+        to: normalizedEmail,
+        name: first_name,
+        verificationUrl,
+      });
+
+      logger.info('Usuario registrado pendiente de verificación', { id: usuario._id });
+      return res.status(201).json({ mensaje: "Registro exitoso. Revisa tu correo para activar la cuenta." });
+    } catch (error) {
+      logger.error('Error en registro con invitación', { error: error.message, stack: error.stack });
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async verifyEmail(req, res) {
+    const { token } = req.query;
+    const redirectBase = buildFrontendRedirect("/login");
+    if (!token) {
+      return res.redirect(`${redirectBase}?verified=missing`);
+    }
+
+    try {
+      const tokenHash = hashToken(token);
+      const usuario = await usuariosService.usuariosDAO.getBy({ verificationToken: tokenHash });
+      if (!usuario) {
+        return res.redirect(`${redirectBase}?verified=invalid`);
+      }
+      if (usuario.emailVerified) {
+        return res.redirect(`${redirectBase}?verified=already`);
+      }
+      if (usuario.verificationExpires && new Date(usuario.verificationExpires) < new Date()) {
+        return res.redirect(`${redirectBase}?verified=expired`);
+      }
+
+      await usuariosService.usuariosDAO.update(usuario._id, {
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpires: null,
+      });
+      logger.info('Correo verificado', { id: usuario._id });
+      return res.redirect(`${redirectBase}?verified=success`);
+    } catch (error) {
+      logger.error('Error verificando correo', { error: error.message, stack: error.stack });
+      return res.redirect(`${redirectBase}?verified=error`);
+    }
   }
 
   static async setPassword(req, res) {
@@ -154,6 +272,60 @@ export class UsuariosController {
       return res
         .status(500)
         .json({ error: `Error al actualizar contraseña: ${error.message}` });
+    }
+  }
+
+  static async changePassword(req, res) {
+    const { currentPassword, newPassword } = req.body;
+    try {
+      const userId = req.user?._id;
+      if (!userId) {
+        return res.status(401).json({ error: "No autorizado" });
+      }
+
+      const usuario = await usuariosService.usuariosDAO.getById(userId);
+      if (!usuario) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      const isMatch = validaHash(currentPassword, usuario.password);
+      if (!isMatch) {
+        return res.status(400).json({ error: "La contraseña actual no es correcta" });
+      }
+
+      await usuariosService.usuariosDAO.update(userId, {
+        password: generaHash(newPassword),
+      });
+
+      logger.info("Contraseña actualizada", { id: userId });
+      return res.status(200).json({ mensaje: "Contraseña actualizada correctamente" });
+    } catch (error) {
+      logger.error("Error al cambiar contraseña", { error: error.message, stack: error.stack });
+      return res.status(500).json({ error: "No se pudo actualizar la contraseña" });
+    }
+  }
+
+  static async crearInvitacion(req, res) {
+    try {
+      const { email, role = "user", maxUses = 1, expiresAt } = req.body;
+      const invitacion = await invitacionesService.createInvitation(
+        { email, role, maxUses, expiresAt },
+        req.user._id
+      );
+      return res.status(201).json({ mensaje: "Invitación generada", invitacion });
+    } catch (error) {
+      logger.error('Error al crear invitación', { error: error.message, stack: error.stack });
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async listarInvitaciones(req, res) {
+    try {
+      const invitaciones = await invitacionesService.listInvitations();
+      return res.status(200).json({ invitaciones });
+    } catch (error) {
+      logger.error('Error al listar invitaciones', { error: error.message, stack: error.stack });
+      return res.status(500).json({ error: "No se pudieron obtener las invitaciones" });
     }
   }
 

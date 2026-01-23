@@ -24,5 +24,22 @@ export const usuariosModelo = mongoose.model('users', new mongoose.Schema({
         type: String,
         default: 'user',
         enum: ['user', 'admin']  
+    },
+    emailVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationToken: {
+        type: String
+    },
+    verificationExpires: {
+        type: Date
+    },
+    invitationCode: {
+        type: String,
+        uppercase: true
+    },
+    googleId: {
+        type: String
     }
 }));

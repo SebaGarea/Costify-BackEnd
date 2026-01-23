@@ -1,26 +1,33 @@
 import express from "express";
 import {  UsuariosController  } from "../controllers/index.js";
 import passport from "passport";
+import { requireRole } from "../middlewares/auth/requireRole.js";
 import {
   validacionRegistro,
   validacionLogin,
   validacionUpdate,
   validacionSetPassword,
   validacionIdUser,
+  validacionChangePassword,
 } from "../middlewares/validations/index.js";
 
 export const router = express.Router();
 
-router.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+const defaultFrontendBase = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+
+router.get("/auth/google", (req, res, next) => {
+  const redirect = req.query.redirect ? encodeURIComponent(req.query.redirect) : "";
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state: redirect,
+  })(req, res, next);
+});
 
 router.get(
   "/auth/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: "/login",
+    failureRedirect: `${defaultFrontendBase}/login`,
   }),
   UsuariosController.loginGoogleCallback
 );
@@ -28,9 +35,10 @@ router.get(
 router.post(
   "/registro",
   validacionRegistro,
-  passport.authenticate("registro", { session: false }),
   UsuariosController.registroUsuario
 );
+
+router.get("/verify-email", UsuariosController.verifyEmail);
 
 router.get(
   "/current",
@@ -42,6 +50,20 @@ router.get(
   "/",
   passport.authenticate("jwt", { session: false }),
   UsuariosController.getUsuarios
+);
+
+router.post(
+  "/invitaciones",
+  passport.authenticate("jwt", { session: false }),
+  requireRole("admin"),
+  UsuariosController.crearInvitacion
+);
+
+router.get(
+  "/invitaciones",
+  passport.authenticate("jwt", { session: false }),
+  requireRole("admin"),
+  UsuariosController.listarInvitaciones
 );
 
 router.get(
@@ -76,4 +98,11 @@ router.post(
   "/set-password",
   validacionSetPassword,
   UsuariosController.setPassword
+);
+
+router.post(
+  "/change-password",
+  validacionChangePassword,
+  passport.authenticate("jwt", { session: false }),
+  UsuariosController.changePassword
 );

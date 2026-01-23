@@ -34,11 +34,7 @@ app.use("/uploads", express.static("uploads"));
 
 const allowedOrigins = process.env.CORS_ORIGINS?.split(",") ?? ["http://localhost:5173"];
 app.use(cors({ origin: allowedOrigins }));
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//   })
-// );
+
 
 app.use("/api/materiasPrimas", materiasPrimasRouter);
 app.use("/api/plantillas", plantillaCostoRouter);
