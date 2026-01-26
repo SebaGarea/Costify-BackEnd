@@ -18,6 +18,8 @@
  *           type: number
  *         categoria:
  *           type: string
+ *         gananciaIndividual:
+ *           type: number
  *     PlantillaCosto:
  *       type: object
  *       properties:

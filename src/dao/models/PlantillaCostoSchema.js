@@ -7,6 +7,7 @@ const ItemSchema = new Schema({
   valor: { type: Number, min: 0, default: 0 },
   cantidad: { type: Number, required: true },
   categoria: { type: String, required: true }, // Carpintería, Herrería, Herrajes, Pintura
+  gananciaIndividual: { type: Number, min: 0, default: 0 },
   esPersonalizado: { type: Boolean, default: false },
   descripcionPersonalizada: { type: String, trim: true },
   categoriaMP: { type: String, trim: true },
