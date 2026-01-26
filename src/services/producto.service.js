@@ -6,20 +6,45 @@ const toPlain = (doc) => {
   return typeof doc.toObject === 'function' ? doc.toObject() : { ...doc };
 };
 
+const sumValues = (entries = {}) =>
+  Object.values(entries).reduce((total, value) => total + Number(value || 0), 0);
+
 const attachPrecioActual = async (producto) => {
   if (!producto) return producto;
   const plainProducto = toPlain(producto);
+  const { planillaCosto: originalPlanilla, ...restoProducto } = plainProducto;
   let precioActual = Number(plainProducto.precio ?? 0);
 
-  const planilla = plainProducto.planillaCosto ? toPlain(plainProducto.planillaCosto) : null;
+  let planilla = originalPlanilla ? toPlain(originalPlanilla) : null;
   if (planilla && Array.isArray(planilla.items) && planilla.items.length > 0) {
     const pricing = await computePlanillaPricing(planilla);
-    if (pricing.unitPrice > 0) {
-      precioActual = pricing.unitPrice;
+    const precioCalculado =
+      pricing.precioFinal ??
+      pricing.unitPrice ??
+      Number(planilla.precioFinal ?? planilla.precio ?? 0);
+    if (precioCalculado > 0) {
+      precioActual = precioCalculado;
     }
+
+    const costoRecalculado =
+      pricing.costoTotal ??
+      (sumValues(pricing.subtotalesPorCategoria) + (pricing.extrasTotal ?? 0));
+    planilla = {
+      ...planilla,
+      costoTotal: costoRecalculado,
+      precioFinal: precioCalculado || Number(planilla.precioFinal ?? 0),
+      subtotalesPorCategoria: pricing.subtotalesPorCategoria,
+      extrasTotal: pricing.extrasTotal ?? planilla.extrasTotal ?? 0,
+      gananciaCalculada:
+        pricing.ganancia ?? (precioCalculado || 0) - (costoRecalculado || 0),
+    };
   }
 
-  return { ...plainProducto, precioActual };
+  const resultado = { ...restoProducto, precioActual };
+  if (planilla) {
+    resultado.planillaCosto = planilla;
+  }
+  return resultado;
 };
 
 export class ProductoService {

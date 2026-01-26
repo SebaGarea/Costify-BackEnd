@@ -1,4 +1,5 @@
 import { MateriaPrimaModel } from "../dao/models/MateriaPrimaSchema.js";
+import { normalizeExtrasPayload, calculateExtrasTotal } from "./planillaExtras.js";
 
 const toPlainObject = (value) => {
   if (!value) return {};
@@ -39,8 +40,12 @@ export const buildPlanillaSnapshotData = async (planilla) => {
     .map((item) => toStringId(item?.materiaPrima))
     .filter(Boolean);
 
-  const materias = await MateriaPrimaModel.find({ _id: { $in: materiaIds } }).lean();
-  const materiaMap = new Map(materias.map((mp) => [mp._id.toString(), mp]));
+  let materiaMap = new Map();
+  if (materiaIds.length > 0) {
+    const uniqueIds = [...new Set(materiaIds)];
+    const materias = await MateriaPrimaModel.find({ _id: { $in: uniqueIds } }).lean();
+    materiaMap = new Map(materias.map((mp) => [mp._id.toString(), mp]));
+  }
 
   const snapshots = [];
   const subtotalesPorCategoria = {};
@@ -52,16 +57,20 @@ export const buildPlanillaSnapshotData = async (planilla) => {
 
     const materiaId = toStringId(item?.materiaPrima);
     const materia = materiaId ? materiaMap.get(materiaId) : null;
-    const precioMateria = Number(materia?.precio ?? 0);
+    const precioMateria = Number(materia?.precio ?? item?.valor ?? 0);
     const subtotal = precioMateria * cantidad;
+
+    if (subtotal <= 0) {
+      continue;
+    }
 
     subtotalesPorCategoria[categoria] =
       (subtotalesPorCategoria[categoria] || 0) + subtotal;
 
     snapshots.push({
       materiaPrima: materia?._id ?? item?.materiaPrima ?? null,
-      nombre: materia?.nombre ?? "",
-      categoria: materia?.categoria ?? categoria,
+      nombre: materia?.nombre ?? item?.descripcionPersonalizada ?? "",
+      categoria: materia?.categoria ?? item?.categoria ?? categoria,
       type: materia?.type ?? "",
       medida: materia?.medida ?? "",
       espesor: materia?.espesor ?? "",
@@ -96,7 +105,12 @@ export const computePlanillaPricing = async (planilla) => {
   }
 
   const porcentajes = toPlainObject(planillaObj.porcentajesPorCategoria);
+  const costoMateriales = Object.values(subtotalesPorCategoria).reduce(
+    (sum, value) => sum + Number(value || 0),
+    0
+  );
   let unitPrice = 0;
+  let unitPriceIncludesExtras = false;
   for (const [categoria, subtotal] of Object.entries(subtotalesPorCategoria)) {
     const pctKey = categoria in porcentajes ? categoria : categoria.toLowerCase();
     const porcentaje = Number(porcentajes[pctKey] ?? 0);
@@ -105,10 +119,29 @@ export const computePlanillaPricing = async (planilla) => {
 
   if (!unitPrice && planillaObj.precioFinal) {
     unitPrice = Number(planillaObj.precioFinal);
+    unitPriceIncludesExtras = true;
   }
   if (!unitPrice && planillaObj.costoTotal) {
     unitPrice = Number(planillaObj.costoTotal);
+    unitPriceIncludesExtras = true;
   }
 
-  return { unitPrice, snapshots, subtotalesPorCategoria };
+  const extrasNormalizados = normalizeExtrasPayload(planillaObj.extras);
+  const extrasTotal = calculateExtrasTotal(extrasNormalizados);
+  const costoTotal = costoMateriales + extrasTotal;
+  const precioFinal = unitPriceIncludesExtras
+    ? unitPrice
+    : unitPrice + extrasTotal;
+  const ganancia = precioFinal - costoTotal;
+
+  return {
+    unitPrice,
+    snapshots,
+    subtotalesPorCategoria,
+    costoMateriales,
+    extrasTotal,
+    costoTotal,
+    precioFinal,
+    ganancia,
+  };
 };

@@ -1,64 +1,36 @@
 import { PlantillaCostoDAOMongo } from '../dao/index.js';
-import { MateriaPrimaModel } from '../dao/models/MateriaPrimaSchema.js';
+import { computePlanillaPricing } from '../utils/pricing.js';
+import { normalizeExtrasPayload, calculateExtrasTotal } from '../utils/planillaExtras.js';
 
-// Servicio para manejar la lógica de las plantillas de costos
 class PlantillaCostoService {
   constructor(dao) {
     this.dao = dao;
   }
 
-  parseNumber(value) {
-    const parsed = parseFloat(value);
+  toNumber(value) {
+    const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  normalizarExtras(extras = {}) {
-    const normalizeSimple = (extra = {}) => ({
-      valor: this.parseNumber(extra?.valor),
-      porcentaje: this.parseNumber(extra?.porcentaje),
-    });
-
-    const camposPersonalizados = Array.isArray(extras.camposPersonalizados)
-      ? extras.camposPersonalizados
-          .map((campo) => ({
-            nombre: campo.nombre?.trim() || '',
-            valor: this.parseNumber(campo.valor),
-            porcentaje: this.parseNumber(campo.porcentaje),
-          }))
-          .filter((campo) => campo.nombre || campo.valor > 0)
-      : [];
-
-    return {
-      creditoCamioneta: normalizeSimple(extras.creditoCamioneta),
-      envio: normalizeSimple(extras.envio),
-      camposPersonalizados,
-    };
+  sumValues(values = {}) {
+    return Object.values(values).reduce((acc, value) => acc + this.toNumber(value), 0);
   }
 
-  calcularTotalExtras(extras = {}) {
-    const entries = [];
-    if (extras.creditoCamioneta) entries.push(extras.creditoCamioneta);
-    if (extras.envio) entries.push(extras.envio);
-    if (Array.isArray(extras.camposPersonalizados)) {
-      entries.push(...extras.camposPersonalizados);
-    }
-
-    return entries.reduce((total, extra) => {
-      const valorBase = this.parseNumber(extra.valor);
-      const porcentaje = this.parseNumber(extra.porcentaje);
-      return total + valorBase * (1 + porcentaje / 100);
-    }, 0);
+  toPlainObject(value) {
+    if (!value) return {};
+    if (value instanceof Map) return Object.fromEntries(value);
+    if (typeof value.toObject === 'function') return value.toObject();
+    if (typeof value === 'object') return { ...value };
+    return {};
   }
 
-  // Determinar categoría principal basándose en los items
   determinarCategoria(subtotales) {
     if (!subtotales || Object.keys(subtotales).length === 0) return 'Otro';
-    
-    // Encontrar la categoría con mayor subtotal
+
     let categoriaPrincipal = '';
     let mayorSubtotal = 0;
     let totalCategorias = 0;
-    
+
     for (const categoria in subtotales) {
       const subtotal = subtotales[categoria] || 0;
       if (subtotal > mayorSubtotal) {
@@ -67,142 +39,143 @@ class PlantillaCostoService {
       }
       if (subtotal > 0) totalCategorias++;
     }
-    
-    // Si hay más de 2 categorías significativas, es "Mixta"
+
     if (totalCategorias > 2) return 'Mixta';
-    
-    // Si el mayor subtotal no es dominante (menos del 70%), es "Mixta"
+
     const totalSubtotales = Object.values(subtotales).reduce((sum, val) => sum + (val || 0), 0);
     if (totalSubtotales > 0 && (mayorSubtotal / totalSubtotales) < 0.7 && totalCategorias > 1) {
       return 'Mixta';
     }
-    
-    // Mapear categorías internas a categorías del schema
+
     const mapeoCategoria = {
-      'herreria': 'Herrería',
-      'carpinteria': 'Carpintería', 
-      'pintura': 'Pintura',
-      'otros': 'Otros'
+      herreria: 'Herrería',
+      carpinteria: 'Carpintería',
+      pintura: 'Pintura',
+      otros: 'Otros',
     };
-    
-    return mapeoCategoria[categoriaPrincipal.toLowerCase()] || 'Mixta';
+
+    return mapeoCategoria[categoriaPrincipal?.toLowerCase?.() || ''] || 'Mixta';
   }
 
-  // Calcula el costo total y el precio final de la plantilla
-  async calcularCostos(items, porcentajesPorCategoria, consumibles = {}, extras = null) {
-    let costoTotal = 0;
-    let precioFinal = 0;
-    const subtotales = {};
+  async recalcularTotales(planillaData, extrasNormalizados) {
+    const pricing = await computePlanillaPricing(planillaData);
+    const subtotales = pricing.subtotalesPorCategoria || {};
+    const costoMateriales = pricing.costoMateriales ?? this.sumValues(subtotales);
+    const extrasTotal = pricing.extrasTotal ?? calculateExtrasTotal(extrasNormalizados);
+    const costoTotal = pricing.costoTotal ?? (costoMateriales + extrasTotal);
+    const precioFinal = pricing.precioFinal ?? ((pricing.unitPrice || costoMateriales) + extrasTotal);
+    const ganancia = pricing.ganancia ?? (precioFinal - costoTotal);
 
-    // Calcular subtotales por categoría (materiales)
-    for (const item of items) {
-      if (!item) continue;
-
-      const cantidad = parseFloat(item.cantidad) || 0;
-      if (cantidad <= 0) continue;
-
-      let precioBase = 0;
-      if (item.materiaPrima) {
-        const materiaPrima = await MateriaPrimaModel.findById(item.materiaPrima);
-        precioBase = materiaPrima ? materiaPrima.precio : item.valor;
-      } else {
-        precioBase = item.valor;
-      }
-
-      if (precioBase === undefined || precioBase === null) continue;
-      const precioUnitario = parseFloat(precioBase) || 0;
-
-      const subtotal = precioUnitario * cantidad;
-      costoTotal += subtotal;
-      if (!subtotales[item.categoria]) subtotales[item.categoria] = 0;
-      subtotales[item.categoria] += subtotal;
-    }
-
-    // Agregar consumibles a subtotales por categoría
-    for (const categoria in consumibles) {
-      const valorConsumible = parseFloat(consumibles[categoria]) || 0;
-      if (valorConsumible > 0) {
-        if (!subtotales[categoria]) subtotales[categoria] = 0;
-        subtotales[categoria] += valorConsumible;
-        costoTotal += valorConsumible;
-      }
-    }
-
-    // Aplicar porcentaje de ganancia por categoría
-    for (const categoria in subtotales) {
-      const porcentaje = porcentajesPorCategoria[categoria] || 0;
-      precioFinal += subtotales[categoria] * (1 + porcentaje / 100);
-    }
-
-    const extrasData = extras ?? this.normalizarExtras();
-    const extrasTotal = this.calcularTotalExtras(extrasData);
-    costoTotal += extrasTotal;
-    precioFinal += extrasTotal;
-
-    return { costoTotal, precioFinal, subtotales, extrasTotal };
+    return { costoTotal, precioFinal, subtotales, extrasTotal, ganancia };
   }
 
   async createPlantilla(data) {
     const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras } = data;
-    const extrasNormalizados = this.normalizarExtras(extras);
-    const { costoTotal, precioFinal, subtotales, extrasTotal } = await this.calcularCostos(
-      items,
-      porcentajesPorCategoria,
-      consumibles,
-      extrasNormalizados
-    );
-    const ganancia = precioFinal - costoTotal; // Calcular ganancia
-    
-    // Determinar categoría automáticamente si no se proporciona
+    const extrasNormalizados = normalizeExtrasPayload(extras);
+    const itemsData = Array.isArray(items) ? items : [];
+    const porcentajesData = porcentajesPorCategoria || {};
+    const consumiblesData = consumibles || {};
+
+    const basePlanilla = {
+      items: itemsData,
+      porcentajesPorCategoria: porcentajesData,
+      consumibles: consumiblesData,
+      extras: extrasNormalizados,
+    };
+
+    const { costoTotal, precioFinal, subtotales, extrasTotal, ganancia } =
+      await this.recalcularTotales(basePlanilla, extrasNormalizados);
     const categoriaFinal = categoria || this.determinarCategoria(subtotales);
-    
+
     return await this.dao.create({
       nombre,
-      items,
+      items: itemsData,
       categoria: categoriaFinal,
       tipoProyecto: tipoProyecto || 'Otro',
       tags: tags || [],
-      porcentajesPorCategoria,
-      consumibles,
+      porcentajesPorCategoria: porcentajesData,
+      consumibles: consumiblesData,
       extras: extrasNormalizados,
       extrasTotal,
       costoTotal,
       subtotales,
       precioFinal,
-      ganancia
+      ganancia,
     });
   }
 
-  // Obtener todas las plantillas
   async getAllPlantillas(filtros = {}) {
     return await this.dao.getAll(filtros);
   }
 
-  // Obtener una plantilla por ID
   async getPlantillaById(id) {
     return await this.dao.getById(id);
   }
 
-  // Actualizar una plantilla existente
   async updatePlantilla(id, data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras } = data;
-    const extrasNormalizados = this.normalizarExtras(extras);
-    const { costoTotal, precioFinal, subtotales, extrasTotal } = await this.calcularCostos(
-      items,
-      porcentajesPorCategoria,
-      consumibles,
-      extrasNormalizados
-    );
-    const ganancia = precioFinal - costoTotal; // Calcular ganancia
-    
-    // Determinar categoría automática si no se proporciona
-    const categoriaFinal = categoria || this.determinarCategoria(subtotales);
-    
+    const plantillaExistente = this.dao.getById ? await this.dao.getById(id) : null;
+
+    if (!plantillaExistente) {
+      const extrasNormalizados = normalizeExtrasPayload(data.extras);
+      const basePlanilla = {
+        items: Array.isArray(data.items) ? data.items : [],
+        porcentajesPorCategoria: data.porcentajesPorCategoria || {},
+        consumibles: data.consumibles || {},
+        extras: extrasNormalizados,
+      };
+
+      const { costoTotal, precioFinal, subtotales, extrasTotal, ganancia } =
+        await this.recalcularTotales(basePlanilla, extrasNormalizados);
+
+      const categoriaFinal = data.categoria || this.determinarCategoria(subtotales);
+      const tipoProyectoFinal = data.tipoProyecto || 'Otro';
+      const tagsFinal = Array.isArray(data.tags) ? data.tags : [];
+
+      return await this.dao.update(id, {
+        nombre: data.nombre,
+        items: basePlanilla.items,
+        porcentajesPorCategoria: basePlanilla.porcentajesPorCategoria,
+        consumibles: basePlanilla.consumibles,
+        extras: extrasNormalizados,
+        extrasTotal,
+        costoTotal,
+        subtotales,
+        precioFinal,
+        ganancia,
+        categoria: categoriaFinal,
+        tipoProyecto: tipoProyectoFinal,
+        tags: tagsFinal,
+      });
+    }
+
+    const itemsActualizados = Array.isArray(data.items)
+      ? data.items
+      : plantillaExistente.items || [];
+    const porcentajesActualizados =
+      data.porcentajesPorCategoria || plantillaExistente.porcentajesPorCategoria || {};
+    const consumiblesActualizados = data.consumibles || plantillaExistente.consumibles || {};
+    const extrasNormalizados = normalizeExtrasPayload(data.extras || plantillaExistente.extras);
+
+    const basePlanilla = {
+      items: itemsActualizados,
+      porcentajesPorCategoria: porcentajesActualizados,
+      consumibles: consumiblesActualizados,
+      extras: extrasNormalizados,
+    };
+
+    const { costoTotal, precioFinal, subtotales, extrasTotal, ganancia } =
+      await this.recalcularTotales(basePlanilla, extrasNormalizados);
+
+    const nombreFinal = data.nombre ?? plantillaExistente.nombre;
+    const categoriaFinal = data.categoria || this.determinarCategoria(subtotales);
+    const tipoProyectoFinal = data.tipoProyecto ?? plantillaExistente.tipoProyecto ?? 'Otro';
+    const tagsFinal = Array.isArray(data.tags) ? data.tags : (plantillaExistente.tags || []);
+
     return await this.dao.update(id, {
-      nombre,
-      items,
-      porcentajesPorCategoria,
-      consumibles,
+      nombre: nombreFinal,
+      items: itemsActualizados,
+      porcentajesPorCategoria: porcentajesActualizados,
+      consumibles: consumiblesActualizados,
       extras: extrasNormalizados,
       extrasTotal,
       costoTotal,
@@ -210,17 +183,70 @@ class PlantillaCostoService {
       precioFinal,
       ganancia,
       categoria: categoriaFinal,
-      tipoProyecto: tipoProyecto || 'Otro',
-      tags: tags || []
+      tipoProyecto: tipoProyectoFinal,
+      tags: tagsFinal,
     });
   }
 
-  // Eliminar una plantilla por ID
   async deletePlantilla(id) {
     return await this.dao.delete(id);
   }
+
+  async recalculateAllPlantillas() {
+    const plantillas = await this.dao.getAll();
+    const stats = {
+      total: Array.isArray(plantillas) ? plantillas.length : 0,
+      updated: 0,
+      errors: [],
+    };
+
+    if (!Array.isArray(plantillas) || plantillas.length === 0) {
+      return stats;
+    }
+
+    for (const planilla of plantillas) {
+      const planillaId = planilla?._id?.toString?.() || String(planilla?._id ?? '');
+      try {
+        const extrasNormalizados = normalizeExtrasPayload(planilla.extras);
+        const itemsPlanilla = Array.isArray(planilla.items) ? planilla.items : [];
+        if (itemsPlanilla.length === 0) {
+          stats.errors.push({ id: planillaId, message: 'No items; se omite recálculo' });
+          continue;
+        }
+        const basePlanilla = {
+          items: itemsPlanilla,
+          porcentajesPorCategoria: this.toPlainObject(planilla.porcentajesPorCategoria),
+          consumibles: this.toPlainObject(planilla.consumibles),
+          extras: extrasNormalizados,
+        };
+
+        const { costoTotal, precioFinal, subtotales, extrasTotal, ganancia } =
+          await this.recalcularTotales(basePlanilla, extrasNormalizados);
+
+        const categoriaFinal = planilla.categoria || this.determinarCategoria(subtotales);
+
+        await this.dao.update(planilla._id, {
+          items: basePlanilla.items,
+          porcentajesPorCategoria: basePlanilla.porcentajesPorCategoria,
+          consumibles: basePlanilla.consumibles,
+          extras: extrasNormalizados,
+          extrasTotal,
+          costoTotal,
+          subtotales,
+          precioFinal,
+          ganancia,
+          categoria: categoriaFinal,
+        });
+
+        stats.updated += 1;
+      } catch (error) {
+        stats.errors.push({ id: planillaId, message: error?.message || 'unknown error' });
+      }
+    }
+
+    return stats;
+  }
 }
 
-// Exporta una instancia del servicio
 export const plantillaCostoService = new PlantillaCostoService(PlantillaCostoDAOMongo);
 export { PlantillaCostoService };

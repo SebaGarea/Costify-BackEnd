@@ -32,8 +32,9 @@ const buildVentaSnapshotPayload = async ({ productoDoc, precioManual }) => {
           ? planillaObjetivo.toObject()
           : planillaObjetivo;
       const pricing = await computePlanillaPricing(planillaData);
-      if (pricing.unitPrice > 0) {
-        snapshot.precioUnitarioSnapshot = pricing.unitPrice;
+      const precioCalculado = pricing.precioFinal ?? pricing.unitPrice;
+      if (precioCalculado > 0) {
+        snapshot.precioUnitarioSnapshot = precioCalculado;
       }
       snapshot.materiasPrimasSnapshot = pricing.snapshots;
     }

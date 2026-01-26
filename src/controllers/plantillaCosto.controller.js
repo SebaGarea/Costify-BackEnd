@@ -104,5 +104,16 @@ export const plantillaCostoController = {
       logger.error('Error al eliminar la plantilla de costo', { error });
       next(error);
     }
+  },
+
+  async recalculateAll(req, res, next) {
+    try {
+      const resultado = await plantillaCostoService.recalculateAllPlantillas();
+      logger.info('Recalculo masivo de plantillas ejecutado', { resultado });
+      res.json({ mensaje: 'Recalculo completado', ...resultado });
+    } catch (error) {
+      logger.error('Error al recalcular las plantillas de costo', { error });
+      next(error);
+    }
   }
 };
