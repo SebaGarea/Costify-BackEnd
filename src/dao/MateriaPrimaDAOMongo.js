@@ -59,10 +59,21 @@ export class MateriaPrimaDAOMongo {
             delete filtersWithoutType.type;
             const filtersWithoutMedida = { ...query };
             delete filtersWithoutMedida.medida;
+            const filtersWithoutNombreMadera = { ...query };
+            delete filtersWithoutNombreMadera.nombreMadera;
 
-            const [availableTypes, availableMedidas] = await Promise.all([
-                MateriaPrimaModel.distinct("type", filtersWithoutType),
-                MateriaPrimaModel.distinct("medida", filtersWithoutMedida),
+            // Para tipos: excluir solo el type, pero mantener nombreMadera si está presente
+            const filtersForTypes = { ...query };
+            delete filtersForTypes.type;
+
+            // Para medidas: excluir solo medida, pero mantener nombreMadera y type si están presentes
+            const filtersForMedidas = { ...query };
+            delete filtersForMedidas.medida;
+
+            const [availableTypes, availableMedidas, availableNombresMadera] = await Promise.all([
+                MateriaPrimaModel.distinct("type", filtersForTypes),
+                MateriaPrimaModel.distinct("medida", filtersForMedidas),
+                MateriaPrimaModel.distinct("nombreMadera", filtersWithoutMedida),
             ]);
 
             return {
@@ -72,6 +83,7 @@ export class MateriaPrimaDAOMongo {
                 limit: safeLimit,
                 availableTypes,
                 availableMedidas,
+                availableNombresMadera: availableNombresMadera.filter(Boolean),
             };
         } catch (error) {
             console.error(error);
@@ -86,15 +98,27 @@ export class MateriaPrimaDAOMongo {
             delete filtersWithoutType.type;
             const filtersWithoutMedida = { ...query };
             delete filtersWithoutMedida.medida;
+            const filtersWithoutNombreMadera = { ...query };
+            delete filtersWithoutNombreMadera.nombreMadera;
 
-            const [availableTypes, availableMedidas] = await Promise.all([
-                MateriaPrimaModel.distinct("type", filtersWithoutType),
-                MateriaPrimaModel.distinct("medida", filtersWithoutMedida),
+            // Para tipos: excluir solo type, mantener nombreMadera
+            const filtersForTypes = { ...query };
+            delete filtersForTypes.type;
+
+            // Para medidas: excluir solo medida, mantener nombreMadera y type
+            const filtersForMedidas = { ...query };
+            delete filtersForMedidas.medida;
+
+            const [availableTypes, availableMedidas, availableNombresMadera] = await Promise.all([
+                MateriaPrimaModel.distinct("type", filtersForTypes),
+                MateriaPrimaModel.distinct("medida", filtersForMedidas),
+                MateriaPrimaModel.distinct("nombreMadera", filtersWithoutMedida),
             ]);
 
             return {
                 availableTypes,
                 availableMedidas,
+                availableNombresMadera: availableNombresMadera.filter(Boolean),
             };
         } catch (error) {
             console.error(error);

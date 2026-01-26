@@ -20,7 +20,7 @@ const parseTypeFilter = (value) => {
 export class MateriaPrimaController {
   static async getAll(req, res, next) {
     try {
-      const { page = "1", limit = "10", category, type, medida } = req.query;
+      const { page = "1", limit = "10", category, type, medida, nombreMadera } = req.query;
       const parsedPage = Number.isFinite(Number(page)) ? Number(page) : 1;
       const parsedLimit = Number.isFinite(Number(limit)) ? Number(limit) : 10;
       const filters = {};
@@ -32,6 +32,7 @@ export class MateriaPrimaController {
         filters.type = parsedType;
       }
       if (medida) filters.medida = medida;
+      if (nombreMadera) filters.nombreMadera = nombreMadera;
       const result = await materiaPrimaService.getAllMateriaPrimas({
         page: parsedPage,
         limit: parsedLimit,
@@ -43,6 +44,7 @@ export class MateriaPrimaController {
       const totalPages = Math.max(1, Math.ceil(total / parsedLimit));
       const availableTypes = result?.availableTypes || [];
       const availableMedidas = result?.availableMedidas || [];
+      const availableNombresMadera = result?.availableNombresMadera || [];
 
       if (materiasPrimas.length === 0) {
         logger.warn("No se encontraron materias primas");
@@ -60,6 +62,7 @@ export class MateriaPrimaController {
         filtersMeta: {
           availableTypes,
           availableMedidas,
+          availableNombresMadera,
         },
       });
     } catch (error) {
@@ -70,7 +73,7 @@ export class MateriaPrimaController {
 
   static async getFiltersMeta(req, res, next) {
     try {
-      const { category, type, medida } = req.query;
+      const { category, type, medida, nombreMadera } = req.query;
       const filters = {};
       if (category) filters.categoria = category;
       const parsedType = parseTypeFilter(type);
@@ -80,16 +83,19 @@ export class MateriaPrimaController {
         filters.type = parsedType;
       }
       if (medida) filters.medida = medida;
+      if (nombreMadera) filters.nombreMadera = nombreMadera;
 
       const meta = await materiaPrimaService.getMateriaPrimaFiltersMeta(filters);
       const availableTypes = meta?.availableTypes || [];
       const availableMedidas = meta?.availableMedidas || [];
+      const availableNombresMadera = meta?.availableNombresMadera || [];
       logger.info("Metadatos de filtros obtenidos exitosamente");
       return res.json({
         status: "success",
         filtersMeta: {
           availableTypes,
           availableMedidas,
+          availableNombresMadera,
         },
       });
     } catch (error) {
