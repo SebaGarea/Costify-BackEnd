@@ -73,6 +73,7 @@ describe("MateriaPrimaController", () => {
           limit: 10,
           availableTypes: ["tipo"],
           availableMedidas: ["medida"],
+          availableNombresMadera: [],
         });
       sinon.stub(logger, "info");
       await MateriaPrimaController.getAll(req, res, next);
@@ -81,7 +82,7 @@ describe("MateriaPrimaController", () => {
           status: "success",
           materiasPrimas: [{ nombre: "Acero" }],
           pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
-          filtersMeta: { availableTypes: ["tipo"], availableMedidas: ["medida"] },
+          filtersMeta: { availableTypes: ["tipo"], availableMedidas: ["medida"], availableNombresMadera: [] },
         })
       ).to.be.true;
       expect(logger.info.called).to.be.true;
@@ -89,7 +90,7 @@ describe("MateriaPrimaController", () => {
     it("debe retornar error si no hay materias primas", async () => {
       sinon
         .stub(materiaPrimaService, "getAllMateriaPrimas")
-        .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [] });
+        .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [], availableNombresMadera: [] });
       sinon.stub(logger, "warn");
       await MateriaPrimaController.getAll(req, res, next);
       expect(
@@ -97,7 +98,7 @@ describe("MateriaPrimaController", () => {
           status: "success",
           materiasPrimas: [],
           pagination: { total: 0, page: 1, limit: 10, totalPages: 1 },
-          filtersMeta: { availableTypes: [], availableMedidas: [] },
+          filtersMeta: { availableTypes: [], availableMedidas: [], availableNombresMadera: [] },
         })
       ).to.be.true;
       expect(next.called).to.be.false;

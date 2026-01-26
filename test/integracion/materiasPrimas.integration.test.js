@@ -35,6 +35,7 @@ describe("Integración - Materias Primas API", () => {
         limit: 10,
         availableTypes: ["tipo"],
         availableMedidas: ["medida"],
+        availableNombresMadera: [],
       });
 
     const res = await request(app).get("/api/materiasPrimas");
@@ -43,13 +44,13 @@ describe("Integración - Materias Primas API", () => {
     expect(res.body.status).to.equal("success");
     expect(res.body.materiasPrimas).to.deep.equal(materiasMock);
     expect(res.body.pagination).to.deep.equal({ total: 2, page: 1, limit: 10, totalPages: 1 });
-    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: ["tipo"], availableMedidas: ["medida"] });
+    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: ["tipo"], availableMedidas: ["medida"], availableNombresMadera: [] });
   });
 
   it("GET /api/materiasPrimas responde 200 aunque no haya registros", async () => {
     sandbox
       .stub(materiaPrimaService, "getAllMateriaPrimas")
-      .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [] });
+      .resolves({ items: [], total: 0, page: 1, limit: 10, availableTypes: [], availableMedidas: [], availableNombresMadera: [] });
 
     const res = await request(app).get("/api/materiasPrimas");
 
@@ -57,7 +58,7 @@ describe("Integración - Materias Primas API", () => {
     expect(res.body.status).to.equal("success");
     expect(res.body.materiasPrimas).to.deep.equal([]);
     expect(res.body.pagination).to.deep.equal({ total: 0, page: 1, limit: 10, totalPages: 1 });
-    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: [], availableMedidas: [] });
+    expect(res.body.filtersMeta).to.deep.equal({ availableTypes: [], availableMedidas: [], availableNombresMadera: [] });
   });
 
   it("POST /api/materiasPrimas crea materia prima", async () => {
