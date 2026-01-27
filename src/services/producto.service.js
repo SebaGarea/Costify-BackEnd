@@ -15,29 +15,19 @@ const attachPrecioActual = async (producto) => {
   const { planillaCosto: originalPlanilla, ...restoProducto } = plainProducto;
   let precioActual = Number(plainProducto.precio ?? 0);
 
-  let planilla = originalPlanilla ? toPlain(originalPlanilla) : null;
+  const planilla = originalPlanilla ? toPlain(originalPlanilla) : null;
   if (planilla && Array.isArray(planilla.items) && planilla.items.length > 0) {
-    const pricing = await computePlanillaPricing(planilla);
-    const precioCalculado =
-      pricing.precioFinal ??
-      pricing.unitPrice ??
-      Number(planilla.precioFinal ?? planilla.precio ?? 0);
-    if (precioCalculado > 0) {
-      precioActual = precioCalculado;
+    const precioPersistido = Number(planilla.precioFinal ?? planilla.precio ?? 0);
+    if (Number.isFinite(precioPersistido) && precioPersistido > 0) {
+      precioActual = precioPersistido;
+    } else {
+      // Fallback: solo si la planilla no tiene precio guardado, calculamos una vez.
+      const pricing = await computePlanillaPricing(planilla);
+      const precioCalculado = pricing.precioFinal ?? pricing.unitPrice ?? 0;
+      if (precioCalculado > 0) {
+        precioActual = precioCalculado;
+      }
     }
-
-    const costoRecalculado =
-      pricing.costoTotal ??
-      (sumValues(pricing.subtotalesPorCategoria) + (pricing.extrasTotal ?? 0));
-    planilla = {
-      ...planilla,
-      costoTotal: costoRecalculado,
-      precioFinal: precioCalculado || Number(planilla.precioFinal ?? 0),
-      subtotalesPorCategoria: pricing.subtotalesPorCategoria,
-      extrasTotal: pricing.extrasTotal ?? planilla.extrasTotal ?? 0,
-      gananciaCalculada:
-        pricing.ganancia ?? (precioCalculado || 0) - (costoRecalculado || 0),
-    };
   }
 
   const resultado = { ...restoProducto, precioActual };
