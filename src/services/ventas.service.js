@@ -12,31 +12,38 @@ const buildVentaSnapshotPayload = async ({ productoDoc, precioManual }) => {
   };
 
   if (productoDoc) {
-    snapshot.precioUnitarioSnapshot = Number(productoDoc.precio ?? 0);
     snapshot.snapshotOrigenPrecio = "catalogo";
-
-    let planillaObjetivo = productoDoc.planillaCosto;
-    if (!planillaObjetivo || !Array.isArray(planillaObjetivo.items)) {
-      const planillaId =
-        typeof productoDoc.planillaCosto === "object" && productoDoc.planillaCosto?._id
-          ? productoDoc.planillaCosto._id
-          : productoDoc.planillaCosto;
-      if (planillaId) {
-        planillaObjetivo = await PlantillaCostoModel.findById(planillaId).lean();
-      }
+    // Siempre buscar la plantilla actualizada por su ID
+    let planillaId = null;
+    if (productoDoc.planillaCosto) {
+      planillaId = typeof productoDoc.planillaCosto === "object" && productoDoc.planillaCosto?._id
+        ? productoDoc.planillaCosto._id
+        : productoDoc.planillaCosto;
     }
-
+    let planillaObjetivo = null;
+    if (planillaId) {
+      planillaObjetivo = await PlantillaCostoModel.findById(planillaId).lean();
+    }
     if (planillaObjetivo) {
-      const planillaData =
-        typeof planillaObjetivo.toObject === "function"
-          ? planillaObjetivo.toObject()
-          : planillaObjetivo;
+      const planillaData = typeof planillaObjetivo.toObject === "function"
+        ? planillaObjetivo.toObject()
+        : planillaObjetivo;
       const pricing = await computePlanillaPricing(planillaData);
-      const precioCalculado = pricing.precioFinal ?? pricing.unitPrice;
-      if (precioCalculado > 0) {
+      const precioPersistido = Number(planillaData.precioFinal ?? 0);
+      const precioCalculado =
+        precioPersistido > 0
+          ? precioPersistido
+          : (pricing.precioFinal ?? pricing.unitPrice);
+
+      if (Number.isFinite(precioCalculado) && precioCalculado > 0) {
         snapshot.precioUnitarioSnapshot = precioCalculado;
+      } else {
+        snapshot.precioUnitarioSnapshot = Number(productoDoc.precio ?? 0);
       }
       snapshot.materiasPrimasSnapshot = pricing.snapshots;
+    } else {
+      // Si no hay plantilla, usar el precio del producto
+      snapshot.precioUnitarioSnapshot = Number(productoDoc.precio ?? 0);
     }
     return snapshot;
   }
