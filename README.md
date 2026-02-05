@@ -31,6 +31,7 @@ Costify es una aplicación para la gestión de costos de fabricación de product
 - **Cobertura de pruebas ampliada:** ahora cada entidad clave (materias primas, productos, plantillas, ventas y usuarios) tiene tests de integración para los flujos de actualización y borrado, incluyendo casos 200 y 404.
 - **Validaciones más estrictas en plantillas de costo:** los middlewares verifican IDs, estructura de items y porcentajes personalizados, registrando advertencias detalladas en Winston cuando hay errores.
 - **Actualización segura de usuarios:** el servicio vuelve a hashear contraseñas al modificar perfiles y abstrae el DAO para facilitar los tests unitarios.
+- **Entorno de pruebas determinista:** los tests de integración usan un stub de `passport.authenticate` y servicios mockeados para evitar dependencias externas y validar las respuestas HTTP de la API.
 - **Capa extra de seguridad HTTP:** se incorporó [Helmet](https://github.com/helmetjs/helmet) para endurecer cabeceras y evitar ataques comunes en navegadores, manteniendo compatibilidad con Swagger.
 - **Docker first:** se añadieron `Dockerfile` y `docker-compose.yml` para levantar API + MongoDB con un solo comando y facilitar paridad entre entornos.
 - **CI en GitHub Actions:** el workflow [ci.yml](.github/workflows/ci.yml) ejecuta `npm ci`, linting, tests, `docker build` y publica la imagen en GHCR en cada push/PR.
@@ -73,8 +74,13 @@ Costify es una aplicación para la gestión de costos de fabricación de product
    npm start
    ```
 
-5. El backend estará disponible en `http://localhost:8080` por defecto.
-6. La documentación interactiva de la API estará disponible en:
+5. Ejecuta los tests automatizados:
+  ```bash
+  npm test
+  ```
+
+6. El backend estará disponible en `http://localhost:8080` por defecto.
+7. La documentación interactiva de la API estará disponible en:
   - [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
 
 ---
@@ -91,6 +97,25 @@ Este comando levanta:
 - MongoDB local (`mongodb://mongo:27017/costify`)
 
 Las variables por defecto se definen en `.env.docker`. Ajusta los puertos según tus necesidades.
+
+---
+
+### 🧪 Testing automatizado
+
+- **Ejecución completa:**
+  ```bash
+  npm test
+  ```
+- **Unitarios (servicios, utilidades):**
+  ```bash
+  npm run test:unit
+  ```
+- **Integración (endpoints REST):**
+  ```bash
+  npm run test:integration
+  ```
+
+Detalle: los tests de integración levantan la app con `supertest`, mockean autenticación con un stub de `passport.authenticate` y reemplazan los servicios/DAOs con `sinon`, por lo que no requieren una base de datos real.
 
 ---
 
@@ -119,6 +144,9 @@ Costify-App/
 │   ├── middlewares/
 │   │   └── validations/
 │   └── utils/
+├── test/
+│   ├── integracion/
+│   └── unitarios/
 ├── package.json
 ├── README.md
 └── ...
@@ -191,7 +219,7 @@ Este proyecto **está en desarrollo** y puede contener cambios frecuentes y func
 - [x] Autenticación de usuarios y protección de rutas
 - [x] Documentación Swagger/OpenAPI
 - [x] Logging con Winston
-- [ ] Tests automatizados
+- [x] Tests automatizados (unitarios + integración)
 - [ ] Gestión avanzada de stock
 - [ ] Reportes y estadísticas de costos
 - [ ] Exportación de presupuestos
