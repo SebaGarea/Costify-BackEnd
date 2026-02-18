@@ -5,3 +5,4 @@ export * from "./UserSchema.js";
 export * from "./PlantillaCostoSchema.js";
 export * from "./ListaCompraSchema.js";
 export * from "./InvitationSchema.js";
+export * from "./TareasSchema.js";

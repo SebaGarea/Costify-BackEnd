@@ -7,3 +7,4 @@ export * from './cloudinary.service.js';
 export * from './listaCompra.service.js';
 export * from './invitaciones.service.js';
 export * from './email.service.js';
+export * from './tareas.service.js';
