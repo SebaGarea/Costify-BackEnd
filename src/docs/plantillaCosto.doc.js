@@ -47,7 +47,7 @@
 
 /**
  * @swagger
- * /plantillas-costo:
+ * /plantillas:
  *   post:
  *     summary: Crea una nueva plantilla de costo
  *     tags: [PlantillasCosto]
@@ -72,7 +72,7 @@
 
 /**
  * @swagger
- * /plantillas-costo:
+ * /plantillas:
  *   get:
  *     summary: Obtiene todas las plantillas de costo
  *     tags: [PlantillasCosto]
@@ -91,7 +91,7 @@
 
 /**
  * @swagger
- * /plantillas-costo/{id}:
+ * /plantillas/{id}:
  *   get:
  *     summary: Obtiene una plantilla de costo por ID
  *     tags: [PlantillasCosto]
@@ -117,7 +117,7 @@
 
 /**
  * @swagger
- * /plantillas-costo/{id}:
+ * /plantillas/{id}:
  *   put:
  *     summary: Actualiza una plantilla de costo por ID
  *     tags: [PlantillasCosto]
@@ -149,7 +149,43 @@
 
 /**
  * @swagger
- * /plantillas-costo/{id}:
+ * /plantillas/{id}/duplicate:
+ *   post:
+ *     summary: Duplica una plantilla de costo por ID (permite renombrar la copia)
+ *     tags: [PlantillasCosto]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la plantilla de costo a duplicar
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre de la nueva plantilla (si se omite, se usa "(copia)")
+ *     responses:
+ *       201:
+ *         description: Plantilla duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlantillaCosto'
+ *       404:
+ *         description: Plantilla no encontrada
+ */
+
+/**
+ * @swagger
+ * /plantillas/{id}:
  *   delete:
  *     summary: Elimina una plantilla de costo por ID
  *     tags: [PlantillasCosto]

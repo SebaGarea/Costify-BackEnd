@@ -141,4 +141,58 @@ describe('PlantillaCostoService', () => {
       expect(mockDAO.delete.calledOnceWith('p1')).to.be.true;
     });
   });
+
+  describe('duplicatePlantilla', () => {
+    it('debe duplicar una plantilla con nuevo nombre', async () => {
+      const origen = {
+        _id: 'p1',
+        nombre: 'Base',
+        categoria: 'Mixta',
+        tipoProyecto: 'Otro',
+        tags: ['exterior'],
+        items: [
+          {
+            materiaPrima: { _id: 'mp1', nombre: 'Hierro' },
+            cantidad: 2,
+            categoria: 'Metal',
+            valor: 100,
+          },
+        ],
+        porcentajesPorCategoria: { Metal: 10 },
+        consumibles: { Metal: 5 },
+        extras: { envio: { valor: 50, porcentaje: 0 } },
+      };
+
+      const getByIdStub = sinon.stub(service, 'getPlantillaById').resolves(origen);
+      const createStub = sinon.stub(service, 'createPlantilla').resolves({ _id: 'p2', nombre: 'Copia' });
+
+      const result = await service.duplicatePlantilla('p1', { nombre: 'Copia' });
+
+      expect(result._id).to.equal('p2');
+      expect(getByIdStub.calledOnceWith('p1')).to.be.true;
+      sinon.assert.calledWithMatch(
+        createStub,
+        sinon.match({
+          nombre: 'Copia',
+          categoria: 'Mixta',
+          tipoProyecto: 'Otro',
+          tags: ['exterior'],
+          porcentajesPorCategoria: { Metal: 10 },
+          consumibles: { Metal: 5 },
+          extras: sinon.match.any,
+          items: [sinon.match({ materiaPrima: 'mp1' })],
+        })
+      );
+    });
+
+    it('debe retornar null si no existe la plantilla origen', async () => {
+      sinon.stub(service, 'getPlantillaById').resolves(null);
+      const createSpy = sinon.spy(service, 'createPlantilla');
+
+      const result = await service.duplicatePlantilla('missing');
+
+      expect(result).to.equal(null);
+      expect(createSpy.called).to.be.false;
+    });
+  });
 });

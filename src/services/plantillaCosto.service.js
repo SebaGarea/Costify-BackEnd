@@ -24,6 +24,14 @@ class PlantillaCostoService {
     return {};
   }
 
+  normalizeItemMateriaPrima(item) {
+    const materiaPrima = item?.materiaPrima;
+    if (!materiaPrima) return undefined;
+    if (typeof materiaPrima === 'string') return materiaPrima;
+    if (typeof materiaPrima === 'object' && materiaPrima._id) return materiaPrima._id;
+    return materiaPrima;
+  }
+
   determinarCategoria(subtotales) {
     if (!subtotales || Object.keys(subtotales).length === 0) return 'Otro';
 
@@ -190,6 +198,40 @@ class PlantillaCostoService {
 
   async deletePlantilla(id) {
     return await this.dao.delete(id);
+  }
+
+  async duplicatePlantilla(id, { nombre } = {}) {
+    const origen = await this.getPlantillaById(id);
+    if (!origen) return null;
+
+    const nombreNuevo = (typeof nombre === 'string' ? nombre.trim() : '') || `${origen.nombre} (copia)`;
+
+    const itemsOrigen = Array.isArray(origen.items) ? origen.items : [];
+    const itemsDuplicados = itemsOrigen.map((item) => ({
+      materiaPrima: this.normalizeItemMateriaPrima(item),
+      valor: item?.valor,
+      cantidad: item?.cantidad,
+      categoria: item?.categoria,
+      gananciaIndividual: item?.gananciaIndividual,
+      esPersonalizado: item?.esPersonalizado,
+      descripcionPersonalizada: item?.descripcionPersonalizada,
+      categoriaMP: item?.categoriaMP,
+      tipoMP: item?.tipoMP,
+      medidaMP: item?.medidaMP,
+      espesorMP: item?.espesorMP,
+      nombreMadera: item?.nombreMadera,
+    }));
+
+    return await this.createPlantilla({
+      nombre: nombreNuevo,
+      items: itemsDuplicados,
+      categoria: origen.categoria,
+      tipoProyecto: origen.tipoProyecto,
+      tags: Array.isArray(origen.tags) ? origen.tags : [],
+      porcentajesPorCategoria: this.toPlainObject(origen.porcentajesPorCategoria),
+      consumibles: this.toPlainObject(origen.consumibles),
+      extras: origen.extras,
+    });
   }
 
   async recalculateAllPlantillas() {

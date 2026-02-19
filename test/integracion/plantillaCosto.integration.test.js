@@ -115,6 +115,19 @@ describe("Integración - Plantillas de Costo API", () => {
     expect(res.body.mensaje).to.equal("Plantilla no encontrada");
   });
 
+  it("POST /api/plantillas/:id/duplicate duplica una plantilla", async () => {
+    const origenId = "507f1f77bcf86cd799439041";
+    const duplicated = { _id: "507f1f77bcf86cd799439099", nombre: "Copia" };
+    sandbox.stub(plantillaCostoService, "duplicatePlantilla").resolves(duplicated);
+
+    const res = await request(app)
+      .post(`/api/plantillas/${origenId}/duplicate`)
+      .send({ nombre: "Copia" });
+
+    expect(res.status).to.equal(201);
+    expect(res.body).to.deep.equal(duplicated);
+  });
+
   it("POST /api/plantillas responde 400 ante validaciones fallidas", async () => {
     const res = await request(app).post("/api/plantillas").send({});
 

@@ -19,6 +19,7 @@ describe('plantillaCostoController', function () {
     sinon.stub(plantillaCostoService, 'getPlantillaById').resolves({ _id: 'p1' });
     sinon.stub(plantillaCostoService, 'updatePlantilla').resolves({ _id: 'p1', nombre: 'Plantilla2' });
     sinon.stub(plantillaCostoService, 'deletePlantilla').resolves(true);
+    sinon.stub(plantillaCostoService, 'duplicatePlantilla').resolves({ _id: 'p2', nombre: 'Copia' });
   });
   afterEach(function () {
     sinon.restore();
@@ -89,6 +90,16 @@ describe('plantillaCostoController', function () {
       const req = { ...mockReq, params: { id: 'p1' } };
       const res = buildRes();
       await plantillaCostoController.delete(req, res, next);
+      expect(res.json.called).to.be.true;
+    });
+  });
+
+  describe('duplicate', function () {
+    it('debe duplicar plantilla', async function () {
+      const req = { ...mockReq, params: { id: 'p1' }, body: { nombre: 'Copia' } };
+      const res = buildRes();
+      await plantillaCostoController.duplicate(req, res, next);
+      expect(res.status.calledWith(201)).to.be.true;
       expect(res.json.called).to.be.true;
     });
   });

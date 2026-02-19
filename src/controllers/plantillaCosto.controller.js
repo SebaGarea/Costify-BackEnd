@@ -115,5 +115,26 @@ export const plantillaCostoController = {
       logger.error('Error al recalcular las plantillas de costo', { error });
       next(error);
     }
+  },
+
+  async duplicate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { nombre } = req.body || {};
+
+      const plantilla = await plantillaCostoService.duplicatePlantilla(id, { nombre });
+      if (!plantilla) {
+        logger.warn(`Plantilla no encontrada para duplicar, ID: ${id}`);
+        const error = new Error("Plantilla no encontrada");
+        error.status = 404;
+        return next(error);
+      }
+
+      logger.info(`Plantilla duplicada, origen ID: ${id}, nueva ID: ${plantilla._id}`);
+      res.status(201).json(plantilla);
+    } catch (error) {
+      logger.error('Error al duplicar la plantilla de costo', { error });
+      next(error);
+    }
   }
 };

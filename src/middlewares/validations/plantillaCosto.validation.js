@@ -76,3 +76,16 @@ export const validacionUpdatePlantillaCosto = [
     next();
   }
 ];
+
+export const validacionDuplicarPlantillaCosto = [
+  param("id").isMongoId().withMessage("ID inválido"),
+  body("nombre").optional().isString().bail().trim().notEmpty().withMessage("El nombre es obligatorio"),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación de duplicación de plantilla de costo fallida', { errores: errors.array() });
+      return res.status(400).json({ errores: errors.array() });
+    }
+    next();
+  },
+];
