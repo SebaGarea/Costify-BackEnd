@@ -91,7 +91,8 @@ class VentasService {
       const seña = Number(data.seña || 0);
       if (seña > valorTotalCalculado)
         throw new Error("La seña no puede ser mayor al total");
-      const restan = valorTotalCalculado - seña;
+      const estadoInicial = data.estado || "pendiente";
+      const restan = estadoInicial === "despachada" ? 0 : valorTotalCalculado - seña;
 
       const ventaLimpia = {
         fecha: data.fecha || new Date(),
@@ -109,7 +110,7 @@ class VentasService {
         precioManual: hasProducto ? null : precioManual,
         fechaLimite: data.fechaLimite || null,
         // estado por defecto si no se provee
-        estado: data.estado || "pendiente",
+        estado: estadoInicial,
         precioUnitarioSnapshot: snapshotPayload.precioUnitarioSnapshot,
         snapshotOrigenPrecio: snapshotPayload.snapshotOrigenPrecio,
         snapshotRegistradoEn: snapshotPayload.snapshotRegistradoEn,
@@ -141,6 +142,8 @@ class VentasService {
     // Obtener la venta actual (puede venir poblada por DAO)
     const actual = await this.dao.getById(id);
     if (!actual) throw new Error("Venta no encontrada");
+
+    const prevEstado = actual?.estado;
 
     // Construir objeto merged partiendo de la venta actual
     const merged = { ...actual };
@@ -276,6 +279,16 @@ class VentasService {
     if (typeof data.estado !== 'undefined') {
       if (data.estado === 'en_proceso') merged.enProcesoAt = new Date();
       else merged.enProcesoAt = null;
+    }
+
+    // Regla de negocio (según UX): al TRANSICIONAR a despachada, se auto-setea restan=0.
+    // Pero luego se permite deshacer el check de `restan` aunque siga en despachada.
+    const isTransitionToDespachada =
+      typeof data.estado !== 'undefined' &&
+      data.estado === 'despachada' &&
+      prevEstado !== 'despachada';
+    if (isTransitionToDespachada) {
+      merged.restan = 0;
     }
 
     const updatedVenta = await this.dao.update(id, merged);
