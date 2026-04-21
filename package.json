@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "seed:demo": "node scripts/seed-demo.js",
     "lint": "eslint .",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "mocha --experimental-specifier-resolution=node \"test/unitarios/**/*.js\"",
