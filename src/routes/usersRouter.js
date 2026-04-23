@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import {  UsuariosController  } from "../controllers/index.js";
 import passport from "passport";
 import { requireRole } from "../middlewares/auth/requireRole.js";
@@ -11,6 +12,14 @@ import {
   validacionChangePassword,
   validacionPerfil,
 } from "../middlewares/validations/index.js";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiados intentos. Intentá de nuevo en 15 minutos." },
+});
 
 export const router = express.Router();
 
@@ -97,6 +106,7 @@ router.delete(
 
 router.post(
   "/login",
+  authLimiter,
   validacionLogin,
   passport.authenticate("login", { session: false }),
   UsuariosController.loginUsuario
@@ -104,6 +114,8 @@ router.post(
 
 router.post(
   "/set-password",
+  authLimiter,
+  passport.authenticate("jwt", { session: false }),
   validacionSetPassword,
   UsuariosController.setPassword
 );

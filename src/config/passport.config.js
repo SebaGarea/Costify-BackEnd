@@ -4,6 +4,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import { UserDaoMongo } from "../dao/UserDAOMongo.js";
 import { validaHash } from "./config.js";
+import logger from "./logger.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -22,16 +23,16 @@ export const iniciarPassport = () => {
         try {
           const usuario = await UserDaoMongo.getBy({ email: username });
           if (!usuario) {
-            console.error("Usuario no encontrado");
+            logger.warn("Intento de login con email no registrado", { email: username });
             return done(null, false);
           }
           if (!validaHash(password, usuario.password)) {
-            console.error("Contraseña incorrecta");
+            logger.warn("Contraseña incorrecta en login", { email: username });
             return done(null, false);
           }
           return done(null, usuario);
         } catch (error) {
-          console.log("Error en la estrategia de login:", error);
+          logger.error("Error en la estrategia de login", { error: error.message });
           return done(error);
         }
       }
@@ -54,7 +55,7 @@ export const iniciarPassport = () => {
           let usuario = await UserDaoMongo.getBy({ email });
 
           if (!usuario) {
-            console.error("Intento de login con Google sin usuario existente", { email });
+            logger.warn("Intento de login con Google sin usuario existente", { email });
             return done(null, false);
           }
 
@@ -67,7 +68,7 @@ export const iniciarPassport = () => {
 
           return done(null, usuario);
         } catch (err) {
-          console.error("Error en estrategia Google:", err);
+          logger.error("Error en estrategia Google", { error: err.message });
           return done(err, false);
         }
       }
