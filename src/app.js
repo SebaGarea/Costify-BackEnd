@@ -14,6 +14,7 @@ import {
   userRouter,
   listaCompraRouter,
   tareasRouter,
+  perfilesPinturaRouter,
 } from "./routes/index.js";
 
 import { errorHandler } from "./middlewares/error.handler.js";
@@ -45,6 +46,7 @@ app.use("/api/ventas", ventasRouter);
 app.use("/api/usuarios", userRouter);
 app.use("/api/lista-compras", listaCompraRouter);
 app.use("/api/tareas", tareasRouter);
+app.use("/api/perfilesPintura", perfilesPinturaRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 
