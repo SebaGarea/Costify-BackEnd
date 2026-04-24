@@ -17,5 +17,4 @@ router.get('/:id',passport.authenticate("jwt", { session: false }),validacionIdM
 router.post('/', passport.authenticate("jwt", { session: false }),validacionCreateMateriaPrima,MateriaPrimaController.create);
 router.post('/import', passport.authenticate("jwt", { session: false }), upload.single('file'), MateriaPrimaController.importFromExcel);
 router.put('/:id',passport.authenticate("jwt", { session: false }),validacionUpdateMateriaPrima, MateriaPrimaController.update);
-router.delete('/',passport.authenticate("jwt", { session: false }), MateriaPrimaController.deleteAll);
 router.delete('/:id',passport.authenticate("jwt", { session: false }), validacionIdMateriaPrima,MateriaPrimaController.delete);

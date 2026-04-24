@@ -66,7 +66,8 @@ export const buildPlanillaSnapshotData = async (planilla) => {
     const precioMateria = Number.isFinite(valorManual) && valorManual > 0
       ? valorManual
       : Number(materia?.precio ?? 0);
-    const subtotal = precioMateria * cantidad;
+    const costoPintura = Number(item?.costoPintura ?? 0);
+    const subtotal = precioMateria * cantidad + (Number.isFinite(costoPintura) ? costoPintura : 0);
 
     if (subtotal <= 0) {
       continue;

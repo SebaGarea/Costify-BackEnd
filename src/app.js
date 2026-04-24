@@ -14,9 +14,12 @@ import {
   userRouter,
   listaCompraRouter,
   tareasRouter,
+  perfilesPinturaRouter,
+  configuracionRouter,
 } from "./routes/index.js";
 
 import { errorHandler } from "./middlewares/error.handler.js";
+import logger from "./config/logger.js";
 
 const app = express();
 
@@ -44,6 +47,10 @@ app.use("/api/ventas", ventasRouter);
 app.use("/api/usuarios", userRouter);
 app.use("/api/lista-compras", listaCompraRouter);
 app.use("/api/tareas", tareasRouter);
+app.use("/api/perfilesPintura", perfilesPinturaRouter);
+app.use("/api/configuracion", configuracionRouter);
+
+app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 
 setupSwagger(app);
 app.use(errorHandler);
@@ -53,17 +60,26 @@ export const startServer = async () => {
     await mongoose.connect(config.MONGO_URL, {
       dbName: config.DB_NAME,
     });
-    console.log("Conexión a DB establecida");
+    logger.info("Conexión a DB establecida");
 
     const server = app.listen(config.PORT, () => {
-      console.log(`Server escuchando en puerto ${config.PORT}`);
+      logger.info(`Server escuchando en puerto ${config.PORT}`);
     });
 
     return server;
   } catch (err) {
-    console.log(`Error al conectarse con el servidor de BD: ${err}`);
-    process.exit(1); 
+    logger.error(`Error al conectarse con el servidor de BD: ${err.message}`);
+    process.exit(1);
   }
 };
+
+const shutdown = async (signal) => {
+  logger.info(`Señal ${signal} recibida. Cerrando servidor...`);
+  await mongoose.connection.close();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 export default app;

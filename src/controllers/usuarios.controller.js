@@ -90,7 +90,7 @@ export class UsuariosController {
     let usuarioDTO = UsuarioDTO.fromObject(usuario);
     logger.info('Usuario obtenido por ID', { id });
     res.setHeader("Content-Type", "application/json");
-    return res.status(200).json({ succes: "succes", usuario: usuarioDTO });
+    return res.status(200).json({ status: "success", usuario: usuarioDTO });
   } catch (error) {
     logger.error('Error al obtener usuario por ID', { id, error: error.message, stack: error.stack });
     next(error);
@@ -123,7 +123,7 @@ export class UsuariosController {
 
       res.setHeader("Content-Type", "application/json");
       return res.status(200).json({
-        status: "succes",
+        status: "success",
         usuario: usuarioDTO,
       });
     } catch (error) {
@@ -147,7 +147,7 @@ export class UsuariosController {
       logger.info('Usuario eliminado exitosamente', { id });
 
       res.setHeader("Content-Type", "application/json");
-      return res.status(200).json({ payload: "succes", usuario: usuarioDTO });
+      return res.status(200).json({ status: "success", usuario: usuarioDTO });
     } catch (error) {
       logger.error('Error al eliminar usuario', { id, error: error.message, stack: error.stack });
       next(error);
