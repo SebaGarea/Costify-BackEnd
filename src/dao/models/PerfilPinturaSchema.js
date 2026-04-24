@@ -6,7 +6,7 @@ const PerfilPinturaSchema = new mongoose.Schema(
     tipo: {
       type: String,
       required: true,
-      enum: ["cuadrado", "rectangular", "redondo", "L"],
+      enum: ["cuadrado", "rectangular", "redondo", "L", "planchuela", "tee", "cuadMacizo", "redMacizo"],
     },
     perimetro: { type: Number, required: true, min: 0 },
     activo: { type: Boolean, default: true },

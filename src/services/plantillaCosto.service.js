@@ -225,6 +225,7 @@ class PlantillaCostoService {
       nombreMadera: item?.nombreMadera,
       pinturaAlHorno: item?.pinturaAlHorno ?? false,
       perfilPinturaId: item?.perfilPinturaId ?? null,
+      perfilPinturaPerimetro: item?.perfilPinturaPerimetro ?? 0,
       costoPintura: item?.costoPintura ?? 0,
     }));
 

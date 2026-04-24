@@ -22,6 +22,10 @@ export class PerfilPinturaDAOMongo {
   }
 
   static count() {
-    return PerfilPinturaModel.countDocuments();
+    return PerfilPinturaModel.countDocuments({ activo: true });
+  }
+
+  static hardDeleteAll() {
+    return PerfilPinturaModel.deleteMany({});
   }
 }

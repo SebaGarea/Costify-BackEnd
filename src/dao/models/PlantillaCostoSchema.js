@@ -17,6 +17,7 @@ const ItemSchema = new Schema({
   nombreMadera: { type: String, trim: true },
   pinturaAlHorno: { type: Boolean, default: false },
   perfilPinturaId: { type: Schema.Types.ObjectId, ref: "perfilesPintura", default: null },
+  perfilPinturaPerimetro: { type: Number, default: 0 },
   costoPintura: { type: Number, default: 0 },
 });
 
