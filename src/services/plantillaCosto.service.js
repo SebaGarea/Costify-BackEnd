@@ -78,7 +78,7 @@ class PlantillaCostoService {
   }
 
   async createPlantilla(data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras } = data;
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras, precioPinturaM2 } = data;
     const extrasNormalizados = normalizeExtrasPayload(extras);
     const itemsData = Array.isArray(items) ? items : [];
     const porcentajesData = porcentajesPorCategoria || {};
@@ -109,6 +109,7 @@ class PlantillaCostoService {
       subtotales,
       precioFinal,
       ganancia,
+      precioPinturaM2: Number(precioPinturaM2) || 15000,
     });
   }
 
@@ -153,6 +154,7 @@ class PlantillaCostoService {
         categoria: categoriaFinal,
         tipoProyecto: tipoProyectoFinal,
         tags: tagsFinal,
+        precioPinturaM2: Number(data.precioPinturaM2) || 15000,
       });
     }
 
@@ -193,6 +195,7 @@ class PlantillaCostoService {
       categoria: categoriaFinal,
       tipoProyecto: tipoProyectoFinal,
       tags: tagsFinal,
+      precioPinturaM2: Number(data.precioPinturaM2) || 15000,
     });
   }
 
@@ -220,6 +223,9 @@ class PlantillaCostoService {
       medidaMP: item?.medidaMP,
       espesorMP: item?.espesorMP,
       nombreMadera: item?.nombreMadera,
+      pinturaAlHorno: item?.pinturaAlHorno ?? false,
+      perfilPinturaId: item?.perfilPinturaId ?? null,
+      costoPintura: item?.costoPintura ?? 0,
     }));
 
     return await this.createPlantilla({
@@ -231,6 +237,7 @@ class PlantillaCostoService {
       porcentajesPorCategoria: this.toPlainObject(origen.porcentajesPorCategoria),
       consumibles: this.toPlainObject(origen.consumibles),
       extras: origen.extras,
+      precioPinturaM2: origen.precioPinturaM2 ?? 15000,
     });
   }
 
