@@ -79,7 +79,7 @@ describe("Integración - Usuarios API", () => {
       .send({ first_name: "Jane" });
 
     expect(res.status).to.equal(200);
-    expect(res.body.status).to.equal("succes");
+    expect(res.body.status).to.equal("success");
     expect(res.body.usuario).to.deep.equal({
       nombre_completo: "Jane Doe",
       email: "jane@costify.com",
@@ -122,7 +122,7 @@ describe("Integración - Usuarios API", () => {
     const res = await request(app).delete("/api/usuarios/507f1f77bcf86cd799439060");
 
     expect(res.status).to.equal(200);
-    expect(res.body.payload).to.equal("succes");
+    expect(res.body.status).to.equal("success");
     expect(res.body.usuario).to.deep.equal({
       nombre_completo: "Jane Doe",
       email: "jane@costify.com",

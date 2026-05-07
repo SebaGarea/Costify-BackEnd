@@ -5,3 +5,5 @@ export { router as productoRouter } from "./productoRouter.js";
 export { router as ventasRouter } from "./ventasRouter.js";
 export { router as listaCompraRouter } from "./listaCompraRouter.js";
 export { router as tareasRouter } from "./tareasRouter.js";
+export { router as perfilesPinturaRouter } from "./perfilesPinturaRouter.js";
+export { router as configuracionRouter } from "./configuracionRouter.js";

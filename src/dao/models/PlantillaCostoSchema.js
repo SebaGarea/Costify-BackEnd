@@ -14,7 +14,11 @@ const ItemSchema = new Schema({
   tipoMP: { type: String, trim: true },
   medidaMP: { type: String, trim: true },
   espesorMP: { type: String, trim: true },
-  nombreMadera: { type: String, trim: true }
+  nombreMadera: { type: String, trim: true },
+  pinturaAlHorno: { type: Boolean, default: false },
+  perfilPinturaId: { type: Schema.Types.ObjectId, ref: "perfilesPintura", default: null },
+  perfilPinturaPerimetro: { type: Number, default: 0 },
+  costoPintura: { type: Number, default: 0 },
 });
 
 const ExtraSimpleSchema = new Schema(
@@ -81,7 +85,8 @@ const PlantillaCostoSchema = new Schema({
     default: () => new Map()
   },
   precioFinal: { type: Number, default: 0 },
-  ganancia: { type: Number, default: 0 } 
+  ganancia: { type: Number, default: 0 },
+  precioPinturaM2: { type: Number, default: 15000 },
 }, { timestamps: true });
 
 export const PlantillaCostoModel = mongoose.model('PlantillaCosto', PlantillaCostoSchema);
