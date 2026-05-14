@@ -1,4 +1,4 @@
-import { materiaPrimaService } from "../services/index.js";
+import { materiaPrimaService, plantillaCostoService } from "../services/index.js";
 import logger from "../config/logger.js";
 
 const parseTypeFilter = (value) => {
@@ -165,6 +165,17 @@ export class MateriaPrimaController {
         return next(error);
       }
       logger.info(`Materia Prima actualizada, ID: ${id}`);
+
+      const esPinturaAlHorno =
+        updatedMateriaPrima.categoria?.toLowerCase() === "proteccion" &&
+        updatedMateriaPrima.type?.toLowerCase().includes("pintura al horno");
+
+      if (esPinturaAlHorno) {
+        plantillaCostoService.syncPinturaPrice().catch((err) =>
+          logger.error("Error al sincronizar precio de pintura al horno en plantillas", { err })
+        );
+      }
+
       return res.json({
         status: "success",
         message: "Materia Prima actualizada correctamente",

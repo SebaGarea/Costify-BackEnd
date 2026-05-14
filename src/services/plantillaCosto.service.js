@@ -1,4 +1,4 @@
-import { PlantillaCostoDAOMongo } from '../dao/index.js';
+import { PlantillaCostoDAOMongo, MateriaPrimaDAOMongo } from '../dao/index.js';
 import { computePlanillaPricing } from '../utils/pricing.js';
 import { normalizeExtrasPayload, calculateExtrasTotal } from '../utils/planillaExtras.js';
 
@@ -78,7 +78,7 @@ class PlantillaCostoService {
   }
 
   async createPlantilla(data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras, precioPinturaM2 } = data;
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras, precioPinturaM2, precioPinturaPersonalizado } = data;
     const extrasNormalizados = normalizeExtrasPayload(extras);
     const itemsData = Array.isArray(items) ? items : [];
     const porcentajesData = porcentajesPorCategoria || {};
@@ -110,6 +110,7 @@ class PlantillaCostoService {
       precioFinal,
       ganancia,
       precioPinturaM2: Number(precioPinturaM2) || 15000,
+      precioPinturaPersonalizado: Boolean(precioPinturaPersonalizado),
     });
   }
 
@@ -155,6 +156,7 @@ class PlantillaCostoService {
         tipoProyecto: tipoProyectoFinal,
         tags: tagsFinal,
         precioPinturaM2: Number(data.precioPinturaM2) || 15000,
+        precioPinturaPersonalizado: Boolean(data.precioPinturaPersonalizado),
       });
     }
 
@@ -196,6 +198,7 @@ class PlantillaCostoService {
       tipoProyecto: tipoProyectoFinal,
       tags: tagsFinal,
       precioPinturaM2: Number(data.precioPinturaM2) || 15000,
+      precioPinturaPersonalizado: Boolean(data.precioPinturaPersonalizado),
     });
   }
 
@@ -239,7 +242,34 @@ class PlantillaCostoService {
       consumibles: this.toPlainObject(origen.consumibles),
       extras: origen.extras,
       precioPinturaM2: origen.precioPinturaM2 ?? 15000,
+      precioPinturaPersonalizado: origen.precioPinturaPersonalizado ?? false,
     });
+  }
+
+  async syncPinturaPrice() {
+    const mp = await MateriaPrimaDAOMongo.findOneByFields({
+      categoria: { $regex: /^proteccion$/i },
+      type: { $regex: /pintura al horno/i },
+    });
+
+    if (!mp?.precio) {
+      return { synced: 0, message: 'No se encontró la materia prima "Pintura al Horno" en la base de datos' };
+    }
+
+    const nuevoPrecio = Number(mp.precio);
+    const plantillas = await this.dao.getAll();
+    if (!Array.isArray(plantillas) || plantillas.length === 0) {
+      return { synced: 0, precio: nuevoPrecio };
+    }
+
+    let synced = 0;
+    for (const plantilla of plantillas) {
+      if (plantilla.precioPinturaPersonalizado) continue;
+      await this.dao.update(plantilla._id, { precioPinturaM2: nuevoPrecio });
+      synced++;
+    }
+
+    return { synced, precio: nuevoPrecio };
   }
 
   async recalculateAllPlantillas() {
