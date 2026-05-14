@@ -1,4 +1,4 @@
-import { materiaPrimaService, plantillaCostoService } from "../services/index.js";
+import { materiaPrimaService, plantillaCostoService, productoService } from "../services/index.js";
 import logger from "../config/logger.js";
 
 const parseTypeFilter = (value) => {
@@ -176,6 +176,11 @@ export class MateriaPrimaController {
         );
       }
 
+      // Recalcular plantillas y productos afectados por el cambio de precio
+      plantillaCostoService.recalculateAllPlantillas()
+        .then(() => productoService.sincronizarPreciosDesdeProductosPlanillas())
+        .catch((err) => logger.error("Error en recalculo post-update materia prima", { err }));
+
       return res.json({
         status: "success",
         message: "Materia Prima actualizada correctamente",
@@ -313,6 +318,12 @@ export class MateriaPrimaController {
       }
 
       const summary = await materiaPrimaService.importFromExcel(req.file.buffer);
+
+      // Recalcular plantillas y productos en background sin bloquear la respuesta
+      plantillaCostoService.recalculateAllPlantillas()
+        .then(() => productoService.sincronizarPreciosDesdeProductosPlanillas())
+        .catch((err) => logger.error("Error en recalculo post-import Excel", { err }));
+
       return res.json({
         status: "success",
         resumen: summary,

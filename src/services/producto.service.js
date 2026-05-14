@@ -74,6 +74,20 @@ export class ProductoService {
   async deleteProducto(id) {
     return await this.dao.delete(id);
   }
+
+  async sincronizarPreciosDesdeProductosPlanillas() {
+    const productos = await this.dao.getAll();
+    let updated = 0;
+    for (const producto of productos) {
+      const planilla = producto.planillaCosto;
+      if (!planilla) continue;
+      const precioFinal = Number(planilla.precioFinal ?? 0);
+      if (!Number.isFinite(precioFinal) || precioFinal <= 0) continue;
+      await this.dao.update(producto._id, { precio: precioFinal });
+      updated++;
+    }
+    return { updated };
+  }
 }
 
 export const productoService = new ProductoService(ProductoDAOMongo);
