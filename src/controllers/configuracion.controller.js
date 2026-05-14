@@ -12,7 +12,7 @@ export class ConfiguracionController {
 
   static async update(req, res, next) {
     try {
-      const { precioPinturaM2, materiaPrimaPinturaId } = req.body;
+      const { precioPinturaM2, materiaPrimaPinturaId, porcentajesPlataformas } = req.body;
       const updateData = {};
 
       if (precioPinturaM2 !== undefined) {
@@ -25,6 +25,10 @@ export class ConfiguracionController {
 
       if (materiaPrimaPinturaId !== undefined) {
         updateData.materiaPrimaPinturaId = materiaPrimaPinturaId || null;
+      }
+
+      if (porcentajesPlataformas !== null && typeof porcentajesPlataformas === "object") {
+        updateData.porcentajesPlataformas = porcentajesPlataformas;
       }
 
       if (Object.keys(updateData).length === 0) {
