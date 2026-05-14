@@ -5,6 +5,7 @@ node_modules/
 .env*
 info.txt
 Tareas.txt
+mejoras.md
 
 # Logs
 logs/

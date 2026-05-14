@@ -106,6 +106,17 @@ export const plantillaCostoController = {
     }
   },
 
+  async syncPinturaPrice(req, res, next) {
+    try {
+      const resultado = await plantillaCostoService.syncPinturaPrice();
+      logger.info('Sincronización de precio pintura al horno ejecutada', { resultado });
+      res.json({ mensaje: 'Sincronización completada', ...resultado });
+    } catch (error) {
+      logger.error('Error al sincronizar precio de pintura al horno', { error });
+      next(error);
+    }
+  },
+
   async recalculateAll(req, res, next) {
     try {
       const resultado = await plantillaCostoService.recalculateAllPlantillas();
