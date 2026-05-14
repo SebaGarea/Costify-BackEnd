@@ -106,6 +106,53 @@ export const plantillaCostoController = {
     }
   },
 
+  async debugPricing(req, res, next) {
+    try {
+      const { id } = req.params;
+      const planilla = await plantillaCostoService.getPlantillaById(id);
+      if (!planilla) {
+        return res.status(404).json({ error: 'Plantilla no encontrada' });
+      }
+      const { computePlanillaPricing } = await import('../utils/pricing.js');
+      const pricing = await computePlanillaPricing(planilla);
+      res.json({
+        plantillaId: id,
+        nombre: planilla.nombre,
+        precioPinturaM2_guardado: planilla.precioPinturaM2,
+        porcentajesPorCategoria: planilla.porcentajesPorCategoria,
+        consumibles: planilla.consumibles,
+        items_input: (planilla.items || []).map((it) => ({
+          categoria: it.categoria,
+          cantidad: it.cantidad,
+          valor_guardado: it.valor,
+          isPriceAuto: it.isPriceAuto,
+          esPersonalizado: it.esPersonalizado,
+          materiaPrima_id: typeof it.materiaPrima === 'object' ? it.materiaPrima?._id : it.materiaPrima,
+          materiaPrima_precio_live: typeof it.materiaPrima === 'object' ? it.materiaPrima?.precio : null,
+          gananciaIndividual: it.gananciaIndividual,
+          pinturaAlHorno: it.pinturaAlHorno,
+          perfilPinturaPerimetro: it.perfilPinturaPerimetro,
+          costoPintura_guardado: it.costoPintura,
+        })),
+        pricing_output: {
+          unitPrice: pricing.unitPrice,
+          snapshots: pricing.snapshots,
+          subtotalesPorCategoria: pricing.subtotalesPorCategoria,
+          costoMateriales: pricing.costoMateriales,
+          extrasTotal: pricing.extrasTotal,
+          costoTotal: pricing.costoTotal,
+          precioFinal: pricing.precioFinal,
+          ganancia: pricing.ganancia,
+        },
+        precioFinal_persistido_en_plantilla: planilla.precioFinal,
+        costoTotal_persistido_en_plantilla: planilla.costoTotal,
+      });
+    } catch (error) {
+      logger.error('Error en debug pricing', { error });
+      next(error);
+    }
+  },
+
   async syncPinturaPrice(req, res, next) {
     try {
       const resultado = await plantillaCostoService.syncPinturaPrice();

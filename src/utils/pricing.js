@@ -1,6 +1,9 @@
 import { MateriaPrimaModel } from "../dao/models/MateriaPrimaSchema.js";
 import { normalizeExtrasPayload, calculateExtrasTotal } from "./planillaExtras.js";
 
+// Misma constante que el frontend
+const METROS_POR_UNIDAD = 6;
+
 const toPlainObject = (value) => {
   if (!value) return {};
   if (value instanceof Map) return Object.fromEntries(value);
@@ -49,6 +52,9 @@ export const buildPlanillaSnapshotData = async (planilla) => {
 
   const snapshots = [];
   const subtotalesPorCategoria = {};
+  // precioPinturaM2 de la planilla (mismo valor que usa el frontend para totalPinturaHorno)
+  const precioPinturaM2 = Number(planillaObj.precioPinturaM2 ?? 0);
+  let costoPinturaTotal = 0;
 
   const parseNumber = (value) => {
     const parsed = Number(value);
@@ -73,15 +79,31 @@ export const buildPlanillaSnapshotData = async (planilla) => {
     const precioMateria = usarPrecioLive
       ? Number(materia?.precio ?? 0)
       : (Number(item?.valor ?? 0) || Number(materia?.precio ?? 0));
-    const costoPintura = Number(item?.costoPintura ?? 0);
-    const subtotal = precioMateria * cantidad + (Number.isFinite(costoPintura) ? costoPintura : 0);
 
-    if (subtotal <= 0) {
+    // Subtotal SIN costoPintura (matchea con el frontend que la suma aparte sin ganancia)
+    const subtotal = precioMateria * cantidad;
+
+    // Pintura al horno: recalcular en vivo si el ítem la tiene activa
+    // Fórmula igual al frontend: perimetro * cantidad * METROS_POR_UNIDAD * precioPinturaM2
+    const perfilPerimetro = Number(item?.perfilPinturaPerimetro ?? 0);
+    const tienePintura = Boolean(item?.pinturaAlHorno) && perfilPerimetro > 0;
+    let costoPinturaItem = 0;
+    if (tienePintura && precioPinturaM2 > 0) {
+      costoPinturaItem = perfilPerimetro * cantidad * METROS_POR_UNIDAD * precioPinturaM2;
+    } else if (tienePintura) {
+      // Fallback al costoPintura guardado si no hay precioPinturaM2 disponible
+      costoPinturaItem = Number(item?.costoPintura ?? 0) || 0;
+    }
+    costoPinturaTotal += costoPinturaItem;
+
+    if (subtotal <= 0 && costoPinturaItem <= 0) {
       continue;
     }
 
-    subtotalesPorCategoria[categoria] =
-      (subtotalesPorCategoria[categoria] || 0) + subtotal;
+    if (subtotal > 0) {
+      subtotalesPorCategoria[categoria] =
+        (subtotalesPorCategoria[categoria] || 0) + subtotal;
+    }
 
     snapshots.push({
       materiaPrima: materia?._id ?? item?.materiaPrima ?? null,
@@ -99,7 +121,7 @@ export const buildPlanillaSnapshotData = async (planilla) => {
     });
   }
 
-  return { snapshots, subtotalesPorCategoria };
+  return { snapshots, subtotalesPorCategoria, costoPinturaTotal };
 };
 
 const getCategoriaPercentage = (categoria, porcentajes = {}) => {
@@ -124,7 +146,7 @@ export const computePlanillaPricing = async (planilla) => {
 
   const planillaObj =
     typeof planilla.toObject === "function" ? planilla.toObject() : planilla;
-  const { snapshots, subtotalesPorCategoria } = await buildPlanillaSnapshotData(
+  const { snapshots, subtotalesPorCategoria, costoPinturaTotal } = await buildPlanillaSnapshotData(
     planillaObj
   );
 
@@ -154,7 +176,7 @@ export const computePlanillaPricing = async (planilla) => {
     const porcentajeCategoria = getCategoriaPercentage(categoriaKey, porcentajes);
     const porcentajeItem = snapshot?.gananciaIndividual;
     const porcentajeAplicado =
-      porcentajeItem !== null && porcentajeItem !== undefined
+      porcentajeItem !== null && porcentajeItem !== undefined && porcentajeItem > 0
         ? porcentajeItem
         : porcentajeCategoria;
 
@@ -170,9 +192,12 @@ export const computePlanillaPricing = async (planilla) => {
 
   const extrasNormalizados = normalizeExtrasPayload(planillaObj.extras);
   const extrasTotal = calculateExtrasTotal(extrasNormalizados);
+  const totalPinturaHorno = Number(costoPinturaTotal) || 0;
 
-  const precioFinal = unitPrice + extrasTotal;
-  const costoTotal = costoMateriales + extrasTotal;
+  // Fórmula del frontend:
+  // precioFinalTotal = precioFinalCategorias (con ganancia) + totalPinturaHorno (sin ganancia) + subtotalExtras
+  const precioFinal = unitPrice + totalPinturaHorno + extrasTotal;
+  const costoTotal = costoMateriales + totalPinturaHorno + extrasTotal;
   const ganancia = precioFinal - costoTotal;
 
   return {

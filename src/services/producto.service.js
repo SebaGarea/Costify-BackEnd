@@ -17,16 +17,16 @@ const attachPrecioActual = async (producto) => {
 
   const planilla = originalPlanilla ? toPlain(originalPlanilla) : null;
   if (planilla && Array.isArray(planilla.items) && planilla.items.length > 0) {
-    const precioPersistido = Number(planilla.precioFinal ?? planilla.precio ?? 0);
-    if (Number.isFinite(precioPersistido) && precioPersistido > 0) {
-      precioActual = precioPersistido;
-    } else {
-      // Fallback: solo si la planilla no tiene precio guardado, calculamos una vez.
-      const pricing = await computePlanillaPricing(planilla);
-      const precioCalculado = pricing.precioFinal ?? pricing.unitPrice ?? 0;
-      if (precioCalculado > 0) {
-        precioActual = precioCalculado;
-      }
+    // SIEMPRE recalcular en vivo con los precios actuales de MP
+    // para que el precio del producto refleje cambios en MP sin esperar recalculo background
+    const pricing = await computePlanillaPricing(planilla);
+    const precioCalculado = Number(pricing.precioFinal ?? pricing.unitPrice ?? 0);
+    if (Number.isFinite(precioCalculado) && precioCalculado > 0) {
+      precioActual = precioCalculado;
+      // Inyectar el precio recalculado en la plantilla devuelta
+      planilla.precioFinal = precioCalculado;
+      planilla.costoTotal = pricing.costoTotal ?? planilla.costoTotal;
+      planilla.ganancia = pricing.ganancia ?? planilla.ganancia;
     }
   }
 
