@@ -1,4 +1,5 @@
 import { PlantillaCostoDAOMongo, MateriaPrimaDAOMongo } from '../dao/index.js';
+import { MateriaPrimaModel } from '../dao/models/index.js';
 import { computePlanillaPricing } from '../utils/pricing.js';
 import { normalizeExtrasPayload, calculateExtrasTotal } from '../utils/planillaExtras.js';
 
@@ -284,6 +285,30 @@ class PlantillaCostoService {
       return stats;
     }
 
+    // Pre-cargar todos los precios live de materias primas usadas en todas las plantillas
+    const toStrId = (v) => {
+      if (!v) return null;
+      if (typeof v === 'string') return v;
+      if (v._id) return v._id.toString();
+      return v.toString();
+    };
+
+    const allMpIds = new Set();
+    for (const planilla of plantillas) {
+      for (const item of (planilla.items || [])) {
+        if (!item.esPersonalizado && item.isPriceAuto !== false && item.materiaPrima) {
+          const id = toStrId(item.materiaPrima);
+          if (id) allMpIds.add(id);
+        }
+      }
+    }
+
+    let preciosLive = new Map();
+    if (allMpIds.size > 0) {
+      const mps = await MateriaPrimaModel.find({ _id: { $in: [...allMpIds] } }).lean();
+      preciosLive = new Map(mps.map(mp => [mp._id.toString(), Number(mp.precio)]));
+    }
+
     for (const planilla of plantillas) {
       const planillaId = planilla?._id?.toString?.() || String(planilla?._id ?? '');
       try {
@@ -293,8 +318,20 @@ class PlantillaCostoService {
           stats.errors.push({ id: planillaId, message: 'No items; se omite recálculo' });
           continue;
         }
+
+        // Actualizar el campo valor de cada ítem auto con el precio live de la MP
+        const itemsActualizados = itemsPlanilla.map(item => {
+          if (item.esPersonalizado || item.isPriceAuto === false || !item.materiaPrima) {
+            return item;
+          }
+          const mpId = toStrId(item.materiaPrima);
+          const precioActual = mpId ? preciosLive.get(mpId) : null;
+          if (precioActual == null) return item;
+          return { ...item, valor: precioActual };
+        });
+
         const basePlanilla = {
-          items: itemsPlanilla,
+          items: itemsActualizados,
           porcentajesPorCategoria: this.toPlainObject(planilla.porcentajesPorCategoria),
           consumibles: this.toPlainObject(planilla.consumibles),
           extras: extrasNormalizados,
@@ -306,7 +343,7 @@ class PlantillaCostoService {
         const categoriaFinal = planilla.categoria || this.determinarCategoria(subtotales);
 
         await this.dao.update(planilla._id, {
-          items: basePlanilla.items,
+          items: itemsActualizados,
           porcentajesPorCategoria: basePlanilla.porcentajesPorCategoria,
           consumibles: basePlanilla.consumibles,
           extras: extrasNormalizados,
