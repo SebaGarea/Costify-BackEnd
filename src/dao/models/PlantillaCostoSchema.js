@@ -87,6 +87,7 @@ const PlantillaCostoSchema = new Schema({
   precioFinal: { type: Number, default: 0 },
   ganancia: { type: Number, default: 0 },
   precioPinturaM2: { type: Number, default: 15000 },
+  precioPinturaPersonalizado: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export const PlantillaCostoModel = mongoose.model('PlantillaCosto', PlantillaCostoSchema);
