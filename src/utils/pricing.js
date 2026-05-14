@@ -62,10 +62,17 @@ export const buildPlanillaSnapshotData = async (planilla) => {
 
     const materiaId = toStringId(item?.materiaPrima);
     const materia = materiaId ? materiaMap.get(materiaId) : null;
-    const valorManual = Number(item?.valor ?? 0);
-    const precioMateria = Number.isFinite(valorManual) && valorManual > 0
-      ? valorManual
-      : Number(materia?.precio ?? 0);
+    // Usar precio live de la MP cuando:
+    // - el ítem tiene referencia a una MP válida
+    // - no es personalizado (esPersonalizado: false)
+    // - isPriceAuto no es explícitamente false (undefined = registros viejos → auto)
+    const usarPrecioLive =
+      Boolean(materia) &&
+      !item?.esPersonalizado &&
+      item?.isPriceAuto !== false;
+    const precioMateria = usarPrecioLive
+      ? Number(materia?.precio ?? 0)
+      : (Number(item?.valor ?? 0) || Number(materia?.precio ?? 0));
     const costoPintura = Number(item?.costoPintura ?? 0);
     const subtotal = precioMateria * cantidad + (Number.isFinite(costoPintura) ? costoPintura : 0);
 
