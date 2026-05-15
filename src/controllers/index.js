@@ -5,3 +5,4 @@ export * from './ventas.controller.js';
 export * from './plantillaCosto.controller.js';
 export * from './listaCompra.controller.js';
 export * from './tareas.controller.js';
+export * from './eventoCalendario.controller.js';
