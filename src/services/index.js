@@ -8,3 +8,4 @@ export * from './listaCompra.service.js';
 export * from './invitaciones.service.js';
 export * from './email.service.js';
 export * from './tareas.service.js';
+export * from './eventoCalendario.service.js';

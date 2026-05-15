@@ -6,3 +6,4 @@ export * from './PlantillaCostoDAOMongo.js';
 export * from './ListaCompraDAOMongo.js';
 export * from './InvitationDAOMongo.js';
 export * from './TareasDAOMongo.js';
+export * from './EventoCalendarioDAOMongo.js';
