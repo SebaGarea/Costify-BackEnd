@@ -7,6 +7,7 @@ export const router = Router();
 
 router.post('/',passport.authenticate("jwt", { session: false }),validacionCreatePlantillaCosto, plantillaCostoController.create);
 
+router.post('/preview', passport.authenticate("jwt", { session: false }), plantillaCostoController.preview);
 router.post('/recalculate/all',passport.authenticate("jwt", { session: false }), plantillaCostoController.recalculateAll);
 router.post('/sync-pintura-price', passport.authenticate("jwt", { session: false }), plantillaCostoController.syncPinturaPrice);
 router.get('/debug/:id', passport.authenticate("jwt", { session: false }), plantillaCostoController.debugPricing);

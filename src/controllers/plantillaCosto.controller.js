@@ -1,8 +1,38 @@
 import { plantillaCostoService } from '../services/index.js';
 import logger from '../config/logger.js';
+import { computePlanillaPricing } from '../utils/pricing.js';
+import { normalizeExtrasPayload } from '../utils/planillaExtras.js';
 
 export const plantillaCostoController = {
-  
+
+  async preview(req, res, next) {
+    try {
+      const data = req.body || {};
+      const extrasNormalizados = normalizeExtrasPayload(data.extras);
+      const basePlanilla = {
+        items: Array.isArray(data.items) ? data.items : [],
+        porcentajesPorCategoria: data.porcentajesPorCategoria || {},
+        consumibles: data.consumibles || {},
+        extras: extrasNormalizados,
+        precioPinturaM2: Number(data.precioPinturaM2) || 0,
+      };
+      const pricing = await computePlanillaPricing(basePlanilla);
+      res.json({
+        precioFinal: pricing.precioFinal ?? 0,
+        costoTotal: pricing.costoTotal ?? 0,
+        ganancia: pricing.ganancia ?? 0,
+        costoMateriales: pricing.costoMateriales ?? 0,
+        extrasTotal: pricing.extrasTotal ?? 0,
+        totalPinturaHorno: pricing.totalPinturaHorno ?? 0,
+        subtotalesPorCategoria: pricing.subtotalesPorCategoria ?? {},
+        precioFinalesPorCategoria: pricing.precioFinalesPorCategoria ?? {},
+      });
+    } catch (error) {
+      logger.error('Error al calcular preview de la plantilla', { error });
+      next(error);
+    }
+  },
+
   async create(req, res, next) {
     try {
       const plantilla = await plantillaCostoService.createPlantilla(req.body);
