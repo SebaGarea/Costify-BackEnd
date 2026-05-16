@@ -168,26 +168,40 @@ export const computePlanillaPricing = async (planilla) => {
 
   // Calcular precio con ganancia por item y consumible respetando gananciaIndividual
   let unitPrice = 0;
+  const precioFinalesPorCategoria = {};
   for (const snapshot of snapshots) {
     const subtotal = Number(snapshot?.subtotal ?? 0);
     if (!Number.isFinite(subtotal) || subtotal <= 0) continue;
 
     const categoriaKey = snapshot?.categoriaNormalizada ?? snapshot?.categoria;
+    const categoriaNormalizada = (categoriaKey || "").toString().toLowerCase();
     const porcentajeCategoria = getCategoriaPercentage(categoriaKey, porcentajes);
     const porcentajeItem = snapshot?.gananciaIndividual;
+
+    // El override por item (gananciaIndividual) solo aplica para items de pintura,
+    // igual que en el frontend. Para herreria/carpinteria/otros se usa siempre el
+    // porcentaje de categoria.
+    const esPintura = categoriaNormalizada === "pintura";
     const porcentajeAplicado =
-      porcentajeItem !== null && porcentajeItem !== undefined && porcentajeItem > 0
+      esPintura && porcentajeItem !== null && porcentajeItem !== undefined
         ? porcentajeItem
         : porcentajeCategoria;
 
-    unitPrice += subtotal * (1 + porcentajeAplicado / 100);
+    const contribucion = subtotal * (1 + porcentajeAplicado / 100);
+    unitPrice += contribucion;
+    precioFinalesPorCategoria[categoriaNormalizada] =
+      (precioFinalesPorCategoria[categoriaNormalizada] || 0) + contribucion;
   }
 
   for (const [categoria, valor] of Object.entries(consumibles)) {
     const amount = Number(valor);
     if (!Number.isFinite(amount) || amount <= 0) continue;
     const porcentaje = getCategoriaPercentage(categoria, porcentajes);
-    unitPrice += amount * (1 + porcentaje / 100);
+    const key = normalizeCategoryKey(categoria).toLowerCase();
+    const contribucion = amount * (1 + porcentaje / 100);
+    unitPrice += contribucion;
+    precioFinalesPorCategoria[key] =
+      (precioFinalesPorCategoria[key] || 0) + contribucion;
   }
 
   const extrasNormalizados = normalizeExtrasPayload(planillaObj.extras);
@@ -204,6 +218,8 @@ export const computePlanillaPricing = async (planilla) => {
     unitPrice,
     snapshots,
     subtotalesPorCategoria,
+    precioFinalesPorCategoria,
+    totalPinturaHorno,
     costoMateriales,
     extrasTotal,
     costoTotal,
