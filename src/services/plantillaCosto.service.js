@@ -115,12 +115,41 @@ class PlantillaCostoService {
     });
   }
 
+  // Recalcula en vivo precioFinal/costoTotal/ganancia usando los precios actuales de las MPs.
+  // Así la card del listado siempre muestra lo mismo que el detalle de la plantilla.
+  async _attachLivePricing(planilla) {
+    if (!planilla) return planilla;
+    const items = Array.isArray(planilla.items) ? planilla.items : [];
+    if (items.length === 0) return planilla;
+    try {
+      const pricing = await computePlanillaPricing(planilla);
+      const precioFinal = Number(pricing.precioFinal ?? 0);
+      if (Number.isFinite(precioFinal) && precioFinal > 0) {
+        planilla.precioFinal = precioFinal;
+      }
+      const costoTotal = Number(pricing.costoTotal ?? 0);
+      if (Number.isFinite(costoTotal) && costoTotal > 0) {
+        planilla.costoTotal = costoTotal;
+      }
+      const ganancia = Number(pricing.ganancia ?? 0);
+      if (Number.isFinite(ganancia)) {
+        planilla.ganancia = ganancia;
+      }
+    } catch {
+      /* si falla, devolvemos lo persistido */
+    }
+    return planilla;
+  }
+
   async getAllPlantillas(filtros = {}) {
-    return await this.dao.getAll(filtros);
+    const plantillas = await this.dao.getAll(filtros);
+    if (!Array.isArray(plantillas)) return plantillas;
+    return Promise.all(plantillas.map((p) => this._attachLivePricing(p)));
   }
 
   async getPlantillaById(id) {
-    return await this.dao.getById(id);
+    const planilla = await this.dao.getById(id);
+    return this._attachLivePricing(planilla);
   }
 
   async updatePlantilla(id, data) {
