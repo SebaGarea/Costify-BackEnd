@@ -6,10 +6,14 @@ export class VentasDAOMongo {
   }
 
   static async getAll() {
-    return await VentasModel.find().sort({ createdAt: -1, fecha: -1, _id: -1 }).populate({
-      path: 'producto',
-      populate: { path: 'planillaCosto' }
-    }).lean();
+    return await VentasModel.find().sort({ createdAt: -1, fecha: -1, _id: -1 })
+      .populate({
+        path: 'producto',
+        populate: { path: 'planillaCosto' }
+      })
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
   static async getAllPaginated(page = 1, limit = 10) {
     const skip = (page - 1) * limit;
@@ -27,6 +31,8 @@ export class VentasDAOMongo {
         .skip(skip)
         .limit(limit)
         .populate({ path: 'producto', populate: { path: 'planillaCosto' } })
+        .populate('createdBy', 'first_name last_name email')
+        .populate('updatedBy', 'first_name last_name email')
         .lean(),
       VentasModel.countDocuments({}),
       VentasModel.aggregate([
@@ -177,16 +183,23 @@ export class VentasDAOMongo {
   }
 
   static async getById(id) {
-    return await VentasModel.findById(id).populate({
-      path: 'producto',
-      populate: { path: 'planillaCosto' }
-    }).lean();
+    return await VentasModel.findById(id)
+      .populate({
+        path: 'producto',
+        populate: { path: 'planillaCosto' }
+      })
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
 
   static async update(id, ventasData) {
     return await VentasModel.findByIdAndUpdate(id, ventasData, {
       new: true,
-    }).lean();
+    })
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
 
   static async delete(id) {
@@ -194,10 +207,16 @@ export class VentasDAOMongo {
   }
 
   static async getByCliente(cliente) {
-    return await VentasModel.find({ cliente: cliente }).sort({ createdAt: -1, fecha: -1, _id: -1 }).lean();
+    return await VentasModel.find({ cliente: cliente })
+      .sort({ createdAt: -1, fecha: -1, _id: -1 })
+      .populate('createdBy', 'first_name last_name email')
+      .lean();
   }
 
   static async getByEstado(estado) {
-    return await VentasModel.find({ estado: estado }).sort({ createdAt: -1, fecha: -1, _id: -1 }).lean();
+    return await VentasModel.find({ estado: estado })
+      .sort({ createdAt: -1, fecha: -1, _id: -1 })
+      .populate('createdBy', 'first_name last_name email')
+      .lean();
   }
 }

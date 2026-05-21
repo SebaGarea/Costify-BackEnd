@@ -4,7 +4,7 @@ import logger from "../config/logger.js";
 export const ventasController = {
   async createVenta(req, res, next) {
     try {
-      const venta = await ventasService.createVenta(req.body);
+      const venta = await ventasService.createVenta(req.body, req.user?._id);
       if(!venta) {
         logger.warn('No se pudo crear la venta', { body: req.body });
         const error = new Error("No se pudo crear la venta");
@@ -59,7 +59,7 @@ export const ventasController = {
 
   async updateVenta(req, res, next) {
     try {
-      const venta = await ventasService.updateVenta(req.params.id, req.body);
+      const venta = await ventasService.updateVenta(req.params.id, req.body, req.user?._id);
       if (!venta) {
         logger.warn(`Venta no encontrada para actualizar, ID: ${req.params.id}`);
         const error = new Error("Venta no encontrada");
