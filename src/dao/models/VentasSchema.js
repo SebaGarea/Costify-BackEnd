@@ -64,6 +64,8 @@ const VentasSchema = new Schema(
       default: "pendiente",
     },
     enProcesoAt: { type: Date, default: null },
+    createdBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
+    updatedBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
   },
   { timestamps: true }
 );
