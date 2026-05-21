@@ -6,7 +6,10 @@ export class TareasDAOMongo {
   }
 
   static async getAll({ filter = {}, sort = { createdAt: -1, _id: -1 } } = {}) {
-    return await TareasModel.find(filter).sort(sort).lean();
+    return await TareasModel.find(filter).sort(sort)
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
 
   static async getAllPaginated(
@@ -16,7 +19,10 @@ export class TareasDAOMongo {
   ) {
     const skip = (page - 1) * limit;
     const [items, total] = await Promise.all([
-      TareasModel.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      TareasModel.find(filter).sort(sort).skip(skip).limit(limit)
+        .populate('createdBy', 'first_name last_name email')
+        .populate('updatedBy', 'first_name last_name email')
+        .lean(),
       TareasModel.countDocuments(filter),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -24,11 +30,17 @@ export class TareasDAOMongo {
   }
 
   static async getById(id) {
-    return await TareasModel.findById(id).lean();
+    return await TareasModel.findById(id)
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
 
   static async update(id, data) {
-    return await TareasModel.findByIdAndUpdate(id, data, { new: true }).lean();
+    return await TareasModel.findByIdAndUpdate(id, data, { new: true })
+      .populate('createdBy', 'first_name last_name email')
+      .populate('updatedBy', 'first_name last_name email')
+      .lean();
   }
 
   static async delete(id) {

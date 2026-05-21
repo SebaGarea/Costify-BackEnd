@@ -57,7 +57,7 @@ class VentasService {
     this.dao = dao;
   }
 
-  async createVenta(data) {
+  async createVenta(data, userId = null) {
     try {
       const hasProducto = Boolean(data.productoId);
       let producto = null;
@@ -115,6 +115,8 @@ class VentasService {
         snapshotOrigenPrecio: snapshotPayload.snapshotOrigenPrecio,
         snapshotRegistradoEn: snapshotPayload.snapshotRegistradoEn,
         materiasPrimasSnapshot: snapshotPayload.materiasPrimasSnapshot,
+        createdBy: userId || null,
+        updatedBy: userId || null,
       };
 
       const nuevaVenta = await this.dao.create(ventaLimpia);
@@ -137,7 +139,7 @@ class VentasService {
     return await this.dao.getById(id);
   }
 
- async updateVenta(id, data) {
+ async updateVenta(id, data, userId = null) {
   try {
     // Obtener la venta actual (puede venir poblada por DAO)
     const actual = await this.dao.getById(id);
@@ -289,6 +291,10 @@ class VentasService {
       prevEstado !== 'despachada';
     if (isTransitionToDespachada) {
       merged.restan = 0;
+    }
+
+    if (userId) {
+      merged.updatedBy = userId;
     }
 
     const updatedVenta = await this.dao.update(id, merged);
