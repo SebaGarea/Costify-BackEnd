@@ -397,6 +397,11 @@ class PlantillaCostoService {
     const result = await this.dao.updateManyTipoProyecto(tipoActual, tipoNuevo);
     return result.modifiedCount;
   }
+
+  async getTiposProyecto() {
+    const tipos = await this.dao.getTiposProyecto();
+    return tipos.filter((t) => t && t.trim() !== '').sort();
+  }
 }
 
 export const plantillaCostoService = new PlantillaCostoService(PlantillaCostoDAOMongo);

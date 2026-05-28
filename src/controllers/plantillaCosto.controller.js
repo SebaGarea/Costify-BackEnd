@@ -226,6 +226,16 @@ export const plantillaCostoController = {
     }
   },
 
+  async getTiposProyecto(req, res, next) {
+    try {
+      const tipos = await plantillaCostoService.getTiposProyecto();
+      res.json(tipos);
+    } catch (error) {
+      logger.error('Error al obtener tipos de proyecto', { error });
+      next(error);
+    }
+  },
+
   async renameTipoProyecto(req, res, next) {
     try {
       const { tipoActual, tipoNuevo } = req.body;
