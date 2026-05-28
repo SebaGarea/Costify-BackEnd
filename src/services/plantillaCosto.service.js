@@ -392,6 +392,11 @@ class PlantillaCostoService {
 
     return stats;
   }
+
+  async renameTipoProyecto(tipoActual, tipoNuevo) {
+    const result = await this.dao.updateManyTipoProyecto(tipoActual, tipoNuevo);
+    return result.modifiedCount;
+  }
 }
 
 export const plantillaCostoService = new PlantillaCostoService(PlantillaCostoDAOMongo);
