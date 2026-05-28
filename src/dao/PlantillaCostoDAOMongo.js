@@ -27,4 +27,10 @@ export class PlantillaCostoDAOMongo {
       { $set: { tipoProyecto: tipoNuevo } }
     );
   }
+
+  static async getTiposProyecto() {
+    return await PlantillaCostoModel.distinct('tipoProyecto', {
+      tipoProyecto: { $nin: ['', null, 'Otro'] },
+    });
+  }
 }
