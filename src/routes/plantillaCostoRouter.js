@@ -9,6 +9,7 @@ router.post('/',passport.authenticate("jwt", { session: false }),validacionCreat
 
 router.post('/preview', passport.authenticate("jwt", { session: false }), plantillaCostoController.preview);
 router.post('/recalculate/all',passport.authenticate("jwt", { session: false }), plantillaCostoController.recalculateAll);
+router.put('/renombrar-tipo', passport.authenticate("jwt", { session: false }), plantillaCostoController.renameTipoProyecto);
 router.post('/sync-pintura-price', passport.authenticate("jwt", { session: false }), plantillaCostoController.syncPinturaPrice);
 router.get('/debug/:id', passport.authenticate("jwt", { session: false }), plantillaCostoController.debugPricing);
 

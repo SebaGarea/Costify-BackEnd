@@ -20,4 +20,11 @@ export class PlantillaCostoDAOMongo {
   static async delete(id) {
     return await PlantillaCostoModel.findByIdAndDelete(id).lean();
   }
+
+  static async updateManyTipoProyecto(tipoActual, tipoNuevo) {
+    return await PlantillaCostoModel.updateMany(
+      { tipoProyecto: tipoActual },
+      { $set: { tipoProyecto: tipoNuevo } }
+    );
+  }
 }
