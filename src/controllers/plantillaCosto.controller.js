@@ -224,5 +224,28 @@ export const plantillaCostoController = {
       logger.error('Error al duplicar la plantilla de costo', { error });
       next(error);
     }
+  },
+
+  async renameTipoProyecto(req, res, next) {
+    try {
+      const { tipoActual, tipoNuevo } = req.body;
+      if (!tipoActual?.trim() || !tipoNuevo?.trim()) {
+        const error = new Error("tipoActual y tipoNuevo son requeridos");
+        error.status = 400;
+        return next(error);
+      }
+      if (tipoActual.trim() === tipoNuevo.trim()) {
+        return res.json({ modifiedCount: 0 });
+      }
+      const modifiedCount = await plantillaCostoService.renameTipoProyecto(
+        tipoActual.trim(),
+        tipoNuevo.trim()
+      );
+      logger.info(`Tipo de proyecto renombrado: "${tipoActual}" → "${tipoNuevo}" (${modifiedCount} plantillas)`);
+      res.json({ modifiedCount });
+    } catch (error) {
+      logger.error('Error al renombrar tipo de proyecto', { error });
+      next(error);
+    }
   }
 };
