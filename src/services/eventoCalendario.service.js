@@ -1,5 +1,17 @@
 import { EventoCalendarioDAOMongo } from "../dao/index.js";
 
+// Normaliza la fecha de un evento a mediodía UTC.
+// Un string "YYYY-MM-DD" se castea a medianoche UTC, que en husos negativos
+// (Argentina UTC-3) puede leerse como el día anterior. Anclar a mediodía UTC
+// (igual que las tareas con cleanDueDate) evita ese corrimiento en cualquier huso.
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const normalizeFecha = (fecha) => {
+  if (typeof fecha === "string" && DATE_ONLY_REGEX.test(fecha)) {
+    return new Date(`${fecha}T12:00:00.000Z`);
+  }
+  return new Date(fecha);
+};
+
 class EventoCalendarioService {
   constructor(dao) {
     this.dao = dao;
@@ -30,7 +42,7 @@ class EventoCalendarioService {
     const evento = {
       title: payload.title,
       description: payload.description ?? "",
-      fecha: payload.fecha,
+      fecha: normalizeFecha(payload.fecha),
       hora: payload.hora ?? "",
       createdBy: userId,
       updatedBy: userId,
@@ -53,7 +65,7 @@ class EventoCalendarioService {
     };
     if (typeof payload.title !== "undefined") patch.title = payload.title;
     if (typeof payload.description !== "undefined") patch.description = payload.description;
-    if (typeof payload.fecha !== "undefined") patch.fecha = payload.fecha;
+    if (typeof payload.fecha !== "undefined") patch.fecha = normalizeFecha(payload.fecha);
     if (typeof payload.hora !== "undefined") patch.hora = payload.hora;
     return await this.dao.update(id, patch);
   }

@@ -226,6 +226,52 @@ export const plantillaCostoController = {
     }
   },
 
+  async addArchivos(req, res, next) {
+    try {
+      const { id } = req.params;
+      const files = req.files || [];
+      if (!files.length) {
+        const error = new Error("No se recibieron archivos");
+        error.status = 400;
+        return next(error);
+      }
+      const plantilla = await plantillaCostoService.addArchivos(id, files);
+      if (!plantilla) {
+        const error = new Error("Plantilla no encontrada");
+        error.status = 404;
+        return next(error);
+      }
+      logger.info(`Archivos agregados a plantilla, ID: ${id}`, { cantidad: files.length });
+      res.status(201).json({ archivos: plantilla.archivos || [] });
+    } catch (error) {
+      logger.error('Error al subir archivos de la plantilla', { error });
+      next(error);
+    }
+  },
+
+  async removeArchivo(req, res, next) {
+    try {
+      const { id } = req.params;
+      const publicId = req.query.publicId || req.body?.publicId;
+      if (!publicId) {
+        const error = new Error("publicId es requerido");
+        error.status = 400;
+        return next(error);
+      }
+      const plantilla = await plantillaCostoService.removeArchivo(id, publicId);
+      if (!plantilla) {
+        const error = new Error("Archivo o plantilla no encontrados");
+        error.status = 404;
+        return next(error);
+      }
+      logger.info(`Archivo eliminado de plantilla, ID: ${id}`, { publicId });
+      res.json({ archivos: plantilla.archivos || [] });
+    } catch (error) {
+      logger.error('Error al eliminar archivo de la plantilla', { error });
+      next(error);
+    }
+  },
+
   async getTiposProyecto(req, res, next) {
     try {
       const tipos = await plantillaCostoService.getTiposProyecto();
