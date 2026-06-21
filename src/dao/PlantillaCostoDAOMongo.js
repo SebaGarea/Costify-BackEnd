@@ -49,4 +49,10 @@ export class PlantillaCostoDAOMongo {
     if (!plantilla) return null;
     return (plantilla.archivos || []).find((a) => a.publicId === publicId) || null;
   }
+
+  static async getTiposProyecto() {
+    return await PlantillaCostoModel.distinct('tipoProyecto', {
+      tipoProyecto: { $nin: ['', null, 'Otro'] },
+    });
+  }
 }
