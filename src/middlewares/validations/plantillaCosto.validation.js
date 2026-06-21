@@ -25,6 +25,7 @@ export const validacionCreatePlantillaCosto = [
       }
       return true;
     }),
+  body("comentarios").optional().isString().withMessage("Comentarios inválidos"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -67,6 +68,7 @@ export const validacionUpdatePlantillaCosto = [
     if (typeof value !== 'object' || Array.isArray(value)) throw new Error("porcentajesPorCategoria debe ser un objeto");
     return true;
   }),
+  body("comentarios").optional().isString().withMessage("Comentarios inválidos"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

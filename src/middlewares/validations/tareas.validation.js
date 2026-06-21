@@ -19,7 +19,12 @@ export const validacionCreateTarea = [
   body("notes").optional().isString().withMessage("Notas inválidas"),
   body("status").optional().isIn(STATUS).withMessage("Estado inválido"),
   body("priority").optional().isIn(PRIORITY).withMessage("Prioridad inválida"),
-  body("dueDate").optional({ checkFalsy: true }).isISO8601().withMessage("dueDate inválido"),
+  body("dueDate")
+    .notEmpty()
+    .withMessage("La fecha de vencimiento es obligatoria")
+    .bail()
+    .isISO8601()
+    .withMessage("dueDate inválido"),
   body("tags")
     .optional()
     .isArray()
@@ -58,6 +63,6 @@ export const validacionQueryTareas = [
   query("tag").optional().isIn(TAGS).withMessage("Tag inválido"),
   query("sort").optional().isIn(["createdAt", "updatedAt", "dueDate"]).withMessage("sort inválido"),
   query("page").optional().isInt({ min: 1 }).withMessage("page inválido"),
-  query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("limit inválido"),
+  query("limit").optional().isInt({ min: 1, max: 500 }).withMessage("limit inválido"),
   handleValidation,
 ];
