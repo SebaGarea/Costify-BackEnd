@@ -27,4 +27,26 @@ export class PlantillaCostoDAOMongo {
       { $set: { tipoProyecto: tipoNuevo } }
     );
   }
+
+  static async pushArchivos(id, archivos = []) {
+    return await PlantillaCostoModel.findByIdAndUpdate(
+      id,
+      { $push: { archivos: { $each: archivos } } },
+      { new: true }
+    ).lean();
+  }
+
+  static async pullArchivo(id, publicId) {
+    return await PlantillaCostoModel.findByIdAndUpdate(
+      id,
+      { $pull: { archivos: { publicId } } },
+      { new: true }
+    ).lean();
+  }
+
+  static async getArchivo(id, publicId) {
+    const plantilla = await PlantillaCostoModel.findById(id).select('archivos').lean();
+    if (!plantilla) return null;
+    return (plantilla.archivos || []).find((a) => a.publicId === publicId) || null;
+  }
 }

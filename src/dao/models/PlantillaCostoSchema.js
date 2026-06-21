@@ -39,6 +39,17 @@ const CampoPersonalizadoSchema = new Schema(
   { _id: false }
 );
 
+// Archivos adjuntos (PDF / imágenes) subidos a Cloudinary
+const ArchivoSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    publicId: { type: String, required: true },
+    nombre: { type: String, default: "", trim: true },
+    mimetype: { type: String, default: "", trim: true },
+  },
+  { _id: false }
+);
+
 // La plantilla de costos
 const PlantillaCostoSchema = new Schema({
   nombre: { type: String, required: true },
@@ -89,6 +100,8 @@ const PlantillaCostoSchema = new Schema({
   ganancia: { type: Number, default: 0 },
   precioPinturaM2: { type: Number, default: 15000 },
   precioPinturaPersonalizado: { type: Boolean, default: false },
+  comentarios: { type: String, default: '', trim: true },
+  archivos: { type: [ArchivoSchema], default: [] },
 }, { timestamps: true });
 
 export const PlantillaCostoModel = mongoose.model('PlantillaCosto', PlantillaCostoSchema);

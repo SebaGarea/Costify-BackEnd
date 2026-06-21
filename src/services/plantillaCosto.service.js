@@ -2,6 +2,7 @@ import { PlantillaCostoDAOMongo, MateriaPrimaDAOMongo } from '../dao/index.js';
 import { MateriaPrimaModel } from '../dao/models/index.js';
 import { computePlanillaPricing } from '../utils/pricing.js';
 import { normalizeExtrasPayload, calculateExtrasTotal } from '../utils/planillaExtras.js';
+import { uploadPlantillaArchivos, deleteCloudinaryAssets } from './cloudinary.service.js';
 
 class PlantillaCostoService {
   constructor(dao) {
@@ -79,7 +80,7 @@ class PlantillaCostoService {
   }
 
   async createPlantilla(data) {
-    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras, precioPinturaM2, precioPinturaPersonalizado } = data;
+    const { items, porcentajesPorCategoria, nombre, consumibles, categoria, tipoProyecto, tags, extras, precioPinturaM2, precioPinturaPersonalizado, comentarios } = data;
     const extrasNormalizados = normalizeExtrasPayload(extras);
     const itemsData = Array.isArray(items) ? items : [];
     const porcentajesData = porcentajesPorCategoria || {};
@@ -112,6 +113,7 @@ class PlantillaCostoService {
       ganancia,
       precioPinturaM2: Number(precioPinturaM2) || 15000,
       precioPinturaPersonalizado: Boolean(precioPinturaPersonalizado),
+      comentarios: typeof comentarios === 'string' ? comentarios : '',
     });
   }
 
@@ -187,6 +189,7 @@ class PlantillaCostoService {
         tags: tagsFinal,
         precioPinturaM2: Number(data.precioPinturaM2) || 15000,
         precioPinturaPersonalizado: Boolean(data.precioPinturaPersonalizado),
+        comentarios: typeof data.comentarios === 'string' ? data.comentarios : '',
       });
     }
 
@@ -229,10 +232,38 @@ class PlantillaCostoService {
       tags: tagsFinal,
       precioPinturaM2: Number(data.precioPinturaM2) || 15000,
       precioPinturaPersonalizado: Boolean(data.precioPinturaPersonalizado),
+      comentarios:
+        typeof data.comentarios === 'string'
+          ? data.comentarios
+          : (plantillaExistente.comentarios ?? ''),
     });
   }
 
+  async addArchivos(id, files = []) {
+    const plantilla = await this.dao.getById(id);
+    if (!plantilla) return null;
+    const archivosSubidos = await uploadPlantillaArchivos(files);
+    if (!archivosSubidos.length) {
+      return plantilla;
+    }
+    return await this.dao.pushArchivos(id, archivosSubidos);
+  }
+
+  async removeArchivo(id, publicId) {
+    const archivo = await this.dao.getArchivo(id, publicId);
+    if (!archivo) return null;
+    await deleteCloudinaryAssets([publicId]);
+    return await this.dao.pullArchivo(id, publicId);
+  }
+
   async deletePlantilla(id) {
+    const plantilla = await this.dao.getById(id);
+    const publicIds = (plantilla?.archivos || [])
+      .map((a) => a.publicId)
+      .filter(Boolean);
+    if (publicIds.length) {
+      await deleteCloudinaryAssets(publicIds);
+    }
     return await this.dao.delete(id);
   }
 

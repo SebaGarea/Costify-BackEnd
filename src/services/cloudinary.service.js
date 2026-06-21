@@ -2,6 +2,7 @@ import cloudinary from '../config/cloudinary.js';
 import logger from '../config/logger.js';
 
 const PRODUCT_FOLDER = 'costify/productos';
+const PLANTILLA_FOLDER = 'costify/plantillas';
 
 const hasCloudinaryConfig = () => {
   const requiredKeys = [
@@ -40,6 +41,34 @@ export const uploadProductImages = async (files = []) => {
     urls: results.map(result => result.secure_url),
     publicIds: results.map(result => result.public_id),
   };
+};
+
+export const uploadPlantillaArchivos = async (files = []) => {
+  if (!files || files.length === 0) {
+    return [];
+  }
+
+  if (!hasCloudinaryConfig()) {
+    return [];
+  }
+
+  const uploads = files.map(async (file) => {
+    const base64File = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+    const result = await cloudinary.uploader.upload(base64File, {
+      folder: PLANTILLA_FOLDER,
+      resource_type: 'auto', // soporta PDF e imágenes
+      use_filename: true,
+      unique_filename: true,
+    });
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+      nombre: file.originalname || '',
+      mimetype: file.mimetype || '',
+    };
+  });
+
+  return await Promise.all(uploads);
 };
 
 export const deleteCloudinaryAssets = async (publicIds = []) => {
