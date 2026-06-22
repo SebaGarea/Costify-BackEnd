@@ -83,3 +83,21 @@ export const streamChat = async ({ system, messages = [], tools, executeTool, on
 
   return full;
 };
+
+/**
+ * Búsqueda web mediante el grounding de Google de Gemini.
+ * Se hace en una request aparte porque la búsqueda nativa no se puede combinar
+ * con function-calling en la misma llamada.
+ * @param {string} query
+ * @returns {Promise<string>}
+ */
+export const webSearch = async (query) => {
+  const genAI = getClient();
+  if (!genAI) throw new Error("GEMINI_API_KEY no está configurada en el servidor");
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    tools: [{ googleSearch: {} }],
+  });
+  const result = await model.generateContent(query);
+  return result.response.text();
+};

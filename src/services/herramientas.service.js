@@ -4,6 +4,7 @@ import {
   TareasModel,
   ContenidoModel,
 } from "../dao/models/index.js";
+import { webSearch } from "./ai.service.js";
 
 const CANALES_VALIDOS = ["instagram", "facebook", "tiktok", "tiendanube"];
 const TIPOS_VALIDOS = ["foto", "reel", "carrusel", "historia", "otro"];
@@ -74,6 +75,18 @@ export const toolDeclarations = [
     name: "getDolar",
     description: "Cotización actual del dólar en Argentina (oficial y blue), compra y venta.",
     parameters: { type: "OBJECT", properties: {} },
+  },
+  {
+    name: "buscarWeb",
+    description:
+      "Busca información actual en internet (noticias, datos recientes, hechos del mundo, cualquier cosa que no esté en los datos del negocio ni en las otras herramientas).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        consulta: { type: "STRING", description: "Qué buscar en la web." },
+      },
+      required: ["consulta"],
+    },
   },
   {
     name: "crearTarea",
@@ -299,6 +312,8 @@ export const executeTool = async (name, args = {}, ctx = {}) => {
       return getClima(args);
     case "getDolar":
       return getDolar();
+    case "buscarWeb":
+      return { resultado: await webSearch(args.consulta || "") };
     case "crearTarea":
       return crearTarea(args, ctx);
     case "crearPublicacion":
