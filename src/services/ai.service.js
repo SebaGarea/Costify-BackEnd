@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Proveedor actual: Gemini (free tier). Para cambiar de proveedor en el futuro
 // basta con reescribir streamChat manteniendo la misma firma.
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const MAX_TOOL_ROUNDS = 5;
 
 let client = null;
