@@ -8,3 +8,4 @@ export { router as tareasRouter } from "./tareasRouter.js";
 export { router as perfilesPinturaRouter } from "./perfilesPinturaRouter.js";
 export { router as configuracionRouter } from "./configuracionRouter.js";
 export { router as eventoCalendarioRouter } from "./eventoCalendarioRouter.js";
+export { router as contenidoRouter } from "./contenidoRouter.js";

@@ -17,6 +17,7 @@ import {
   perfilesPinturaRouter,
   configuracionRouter,
   eventoCalendarioRouter,
+  contenidoRouter,
 } from "./routes/index.js";
 
 import { errorHandler } from "./middlewares/error.handler.js";
@@ -51,6 +52,7 @@ app.use("/api/tareas", tareasRouter);
 app.use("/api/perfilesPintura", perfilesPinturaRouter);
 app.use("/api/configuracion", configuracionRouter);
 app.use("/api/eventos-calendario", eventoCalendarioRouter);
+app.use("/api/contenido", contenidoRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 

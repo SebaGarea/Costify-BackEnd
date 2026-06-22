@@ -9,3 +9,4 @@ export * from './invitaciones.service.js';
 export * from './email.service.js';
 export * from './tareas.service.js';
 export * from './eventoCalendario.service.js';
+export * from './contenido.service.js';
