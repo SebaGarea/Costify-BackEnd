@@ -1,6 +1,7 @@
 import { streamChat } from "../services/ai.service.js";
 import { buildBusinessContext } from "../services/contextoNegocio.service.js";
 import { toolDeclarations, executeTool } from "../services/herramientas.service.js";
+import { configuracionService } from "../services/configuracion.service.js";
 import logger from "../config/logger.js";
 
 const SYSTEM_BASE = `Sos el asistente de IA de Costify, una app para gestionar un negocio de fabricación a medida (costos, ventas, productos, materias primas, lista de compras, tareas y contenido de redes sociales).
@@ -25,8 +26,17 @@ export const chatController = {
         return next(error);
       }
 
-      const contexto = await buildBusinessContext();
-      const system = `${SYSTEM_BASE}\n\n--- Resumen del negocio (datos reales) ---\n${contexto}`;
+      const [contexto, config] = await Promise.all([
+        buildBusinessContext(),
+        configuracionService.get().catch(() => null),
+      ]);
+      const perfil = config?.perfilNegocio?.trim();
+
+      let system = SYSTEM_BASE;
+      if (perfil) {
+        system += `\n\n--- Perfil del negocio (escrito por el dueño) ---\n${perfil}`;
+      }
+      system += `\n\n--- Resumen del negocio (datos reales) ---\n${contexto}`;
 
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
