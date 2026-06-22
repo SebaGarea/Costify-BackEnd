@@ -1,5 +1,6 @@
 import { streamChat } from "../services/ai.service.js";
 import { buildBusinessContext } from "../services/contextoNegocio.service.js";
+import { toolDeclarations, executeTool } from "../services/herramientas.service.js";
 import logger from "../config/logger.js";
 
 const SYSTEM_BASE = `Sos el asistente de IA de Costify, una app para gestionar un negocio de fabricación a medida (costos, ventas, productos, materias primas, lista de compras, tareas y contenido de redes sociales).
@@ -7,8 +8,9 @@ const SYSTEM_BASE = `Sos el asistente de IA de Costify, una app para gestionar u
 Reglas:
 - Hablás en español rioplatense, claro y conciso.
 - Ayudás con la app y con los datos del negocio, y también podés responder consultas generales (ideas, textos, explicaciones).
-- No inventes números del negocio: usá SOLO el "Resumen del negocio" que se te entrega. Si el dato no está ahí, decí que no lo tenés a mano.
-- Si te preguntan por información en tiempo real (clima, dólar, noticias) aclará que por ahora no tenés acceso a datos en vivo.
+- No inventes números del negocio: usá las HERRAMIENTAS para traer datos reales y actualizados cuando te pregunten por ventas, cobros, entregas, productos, clima o dólar.
+- El "Resumen del negocio" te da un panorama inicial; si necesitás detalle o un período distinto, usá las herramientas.
+- Después de usar una herramienta, respondé en lenguaje natural (no muestres el JSON crudo) y formateá montos en pesos.
 - Usá formato markdown cuando ayude (listas, negritas).`;
 
 export const chatController = {
@@ -34,6 +36,8 @@ export const chatController = {
           role: m.role === "assistant" ? "assistant" : "user",
           content: String(m.content || ""),
         })),
+        tools: toolDeclarations,
+        executeTool,
         onChunk: (text) => res.write(text),
       });
 

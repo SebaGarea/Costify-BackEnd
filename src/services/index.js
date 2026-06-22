@@ -12,3 +12,4 @@ export * from './eventoCalendario.service.js';
 export * from './contenido.service.js';
 export * from './ai.service.js';
 export * from './contextoNegocio.service.js';
+export * from './herramientas.service.js';
