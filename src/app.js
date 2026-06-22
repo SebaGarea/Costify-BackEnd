@@ -18,6 +18,7 @@ import {
   configuracionRouter,
   eventoCalendarioRouter,
   contenidoRouter,
+  chatRouter,
 } from "./routes/index.js";
 
 import { errorHandler } from "./middlewares/error.handler.js";
@@ -53,6 +54,7 @@ app.use("/api/perfilesPintura", perfilesPinturaRouter);
 app.use("/api/configuracion", configuracionRouter);
 app.use("/api/eventos-calendario", eventoCalendarioRouter);
 app.use("/api/contenido", contenidoRouter);
+app.use("/api/chat", chatRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 

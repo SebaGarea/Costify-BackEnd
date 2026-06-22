@@ -20,6 +20,7 @@ const ConfiguracionSchema = new Schema(
     precioPinturaM2: { type: Number, default: 15000 },
     materiaPrimaPinturaId: { type: Schema.Types.ObjectId, ref: "materias_primas", default: null },
     porcentajesPlataformas: { type: PorcentajesPlataformasSchema, default: () => ({}) },
+    perfilNegocio: { type: String, default: "", trim: true, maxlength: 2000 },
   },
   { timestamps: true }
 );
