@@ -10,3 +10,5 @@ export * from './email.service.js';
 export * from './tareas.service.js';
 export * from './eventoCalendario.service.js';
 export * from './contenido.service.js';
+export * from './ai.service.js';
+export * from './contextoNegocio.service.js';

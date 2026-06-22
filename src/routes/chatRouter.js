@@ -1,0 +1,21 @@
+import { Router } from "express";
+import passport from "passport";
+import rateLimit from "express-rate-limit";
+import { chatController } from "../controllers/index.js";
+
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas consultas seguidas. Esperá un momento." },
+});
+
+export const router = Router();
+
+router.post(
+  "/",
+  passport.authenticate("jwt", { session: false }),
+  chatLimiter,
+  chatController.chat
+);
