@@ -12,8 +12,12 @@ export class ConfiguracionController {
 
   static async update(req, res, next) {
     try {
-      const { precioPinturaM2, materiaPrimaPinturaId, porcentajesPlataformas } = req.body;
+      const { precioPinturaM2, materiaPrimaPinturaId, porcentajesPlataformas, perfilNegocio } = req.body;
       const updateData = {};
+
+      if (perfilNegocio !== undefined) {
+        updateData.perfilNegocio = String(perfilNegocio).slice(0, 2000);
+      }
 
       if (precioPinturaM2 !== undefined) {
         const precio = Number(precioPinturaM2);

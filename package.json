@@ -21,6 +21,7 @@
     "url": "https://github.com/SebaGarea/Costify-App.git"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",
     "connect-mongo": "^5.1.0",

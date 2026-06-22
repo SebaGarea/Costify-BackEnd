@@ -7,3 +7,4 @@ export * from './listaCompra.controller.js';
 export * from './tareas.controller.js';
 export * from './eventoCalendario.controller.js';
 export * from './contenido.controller.js';
+export * from './chat.controller.js';
