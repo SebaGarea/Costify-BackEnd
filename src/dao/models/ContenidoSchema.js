@@ -8,6 +8,14 @@ const ChecklistItemSchema = new Schema(
   { _id: false }
 );
 
+const EnlaceSchema = new Schema(
+  {
+    titulo: { type: String, default: "", trim: true },
+    url: { type: String, required: true, trim: true },
+  },
+  { _id: false }
+);
+
 const ContenidoSchema = new Schema(
   {
     titulo: { type: String, required: true, trim: true },
@@ -44,6 +52,7 @@ const ContenidoSchema = new Schema(
     copy: { type: String, default: "", trim: true },
     notas: { type: String, default: "", trim: true },
     checklist: { type: [ChecklistItemSchema], default: [] },
+    enlaces: { type: [EnlaceSchema], default: [] },
     orden: { type: Number, default: 0 },
     createdBy: {
       type: Schema.Types.ObjectId,

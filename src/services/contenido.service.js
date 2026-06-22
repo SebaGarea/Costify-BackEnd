@@ -41,6 +41,7 @@ class ContenidoService {
       copy: payload.copy ?? "",
       notas: payload.notas ?? "",
       checklist: Array.isArray(payload.checklist) ? payload.checklist : [],
+      enlaces: Array.isArray(payload.enlaces) ? payload.enlaces : [],
       orden: Number.isFinite(Number(payload.orden)) ? Number(payload.orden) : 0,
       createdBy: userId,
       updatedBy: userId,
@@ -78,6 +79,7 @@ class ContenidoService {
     if (typeof payload.copy !== "undefined") patch.copy = payload.copy;
     if (typeof payload.notas !== "undefined") patch.notas = payload.notas;
     if (typeof payload.checklist !== "undefined") patch.checklist = payload.checklist;
+    if (typeof payload.enlaces !== "undefined") patch.enlaces = payload.enlaces;
     if (typeof payload.orden !== "undefined") patch.orden = payload.orden;
 
     return await this.dao.update(id, patch);

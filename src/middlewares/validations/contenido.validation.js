@@ -44,6 +44,13 @@ export const validacionCreateContenido = [
     .custom(checklistValidator)
     .withMessage("Checklist inválido"),
   body("orden").optional().isNumeric().withMessage("orden inválido"),
+  body("enlaces")
+    .optional()
+    .isArray()
+    .withMessage("enlaces debe ser un array")
+    .bail()
+    .custom((arr) => arr.every((e) => e && typeof e === "object" && typeof e.url === "string" && e.url.trim()))
+    .withMessage("Cada enlace necesita una url"),
   handleValidation,
 ];
 
@@ -72,6 +79,13 @@ export const validacionUpdateContenido = [
     .custom(checklistValidator)
     .withMessage("Checklist inválido"),
   body("orden").optional().isNumeric().withMessage("orden inválido"),
+  body("enlaces")
+    .optional()
+    .isArray()
+    .withMessage("enlaces debe ser un array")
+    .bail()
+    .custom((arr) => arr.every((e) => e && typeof e === "object" && typeof e.url === "string" && e.url.trim()))
+    .withMessage("Cada enlace necesita una url"),
   handleValidation,
 ];
 
