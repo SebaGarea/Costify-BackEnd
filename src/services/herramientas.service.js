@@ -1,4 +1,14 @@
-import { VentasModel, ProductoModel } from "../dao/models/index.js";
+import {
+  VentasModel,
+  ProductoModel,
+  TareasModel,
+  ContenidoModel,
+} from "../dao/models/index.js";
+
+const CANALES_VALIDOS = ["instagram", "facebook", "tiktok", "tiendanube"];
+const TIPOS_VALIDOS = ["foto", "reel", "carrusel", "historia", "otro"];
+const PRIORIDADES = ["alta", "media", "baja"];
+const aFecha = (s) => (s ? new Date(`${String(s).slice(0, 10)}T12:00:00.000Z`) : null);
 
 const diasAtras = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
@@ -64,6 +74,42 @@ export const toolDeclarations = [
     name: "getDolar",
     description: "Cotización actual del dólar en Argentina (oficial y blue), compra y venta.",
     parameters: { type: "OBJECT", properties: {} },
+  },
+  {
+    name: "crearTarea",
+    description:
+      "Crea una tarea / recordatorio en la app. Usalo cuando el usuario pida agendar, recordar o anotar algo para hacer.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        titulo: { type: "STRING", description: "Qué hay que hacer." },
+        prioridad: { type: "STRING", description: "alta, media o baja." },
+        fecha: { type: "STRING", description: "Fecha de vencimiento YYYY-MM-DD (opcional)." },
+        notas: { type: "STRING", description: "Detalles adicionales (opcional)." },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
+    name: "crearPublicacion",
+    description:
+      "Crea una publicación de contenido (idea) en la sección Contenido, con el copy ya escrito. Usalo cuando el usuario pida armar/cargar un posteo o generar un texto para publicar. Vos escribís el copy.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        titulo: { type: "STRING", description: "Título / idea de la publicación." },
+        copy: { type: "STRING", description: "Texto del posteo (caption + hashtags)." },
+        canales: {
+          type: "ARRAY",
+          items: { type: "STRING" },
+          description: "Canales: instagram, facebook, tiktok, tiendanube.",
+        },
+        tipo: { type: "STRING", description: "foto, reel, carrusel, historia." },
+        productoTexto: { type: "STRING", description: "Nombre del producto asociado (opcional)." },
+        fecha: { type: "STRING", description: "Fecha de publicación YYYY-MM-DD (opcional)." },
+      },
+      required: ["titulo", "copy"],
+    },
   },
 ];
 
@@ -191,8 +237,57 @@ const getDolar = async () => {
   };
 };
 
+// ---------- Acciones (escritura) ----------
+const crearTarea = async ({ titulo, prioridad, fecha, notas } = {}, ctx = {}) => {
+  if (!ctx.userId) return { error: "No se pudo identificar al usuario" };
+  if (!titulo) return { error: "Falta el título de la tarea" };
+  const tarea = await TareasModel.create({
+    title: titulo,
+    notes: notas || "",
+    priority: PRIORIDADES.includes(prioridad) ? prioridad : "media",
+    dueDate: aFecha(fecha),
+    tags: [],
+    createdBy: ctx.userId,
+    updatedBy: ctx.userId,
+  });
+  return { ok: true, id: String(tarea._id), titulo: tarea.title, vence: tarea.dueDate };
+};
+
+const crearPublicacion = async ({ titulo, copy, canales, tipo, productoTexto, fecha } = {}, ctx = {}) => {
+  if (!ctx.userId) return { error: "No se pudo identificar al usuario" };
+  if (!titulo) return { error: "Falta el título de la publicación" };
+
+  let producto = null;
+  if (productoTexto) {
+    const rx = new RegExp(productoTexto.trim(), "i");
+    const p = await ProductoModel.findOne({ $or: [{ nombre: rx }, { modelo: rx }] }).lean();
+    producto = p?._id || null;
+  }
+
+  const validCanales = (Array.isArray(canales) ? canales : []).filter((c) => CANALES_VALIDOS.includes(c));
+  const pub = await ContenidoModel.create({
+    titulo,
+    copy: copy || "",
+    canales: validCanales.length ? validCanales : ["instagram", "facebook"],
+    tipo: TIPOS_VALIDOS.includes(tipo) ? tipo : "foto",
+    fechaPublicacion: aFecha(fecha),
+    producto,
+    responsable: ctx.userId,
+    estado: "idea",
+    createdBy: ctx.userId,
+    updatedBy: ctx.userId,
+  });
+  return {
+    ok: true,
+    id: String(pub._id),
+    titulo: pub.titulo,
+    programada: !!pub.fechaPublicacion,
+    productoAsociado: Boolean(producto),
+  };
+};
+
 // ---------- Dispatcher ----------
-export const executeTool = async (name, args = {}) => {
+export const executeTool = async (name, args = {}, ctx = {}) => {
   switch (name) {
     case "getMetricasNegocio":
       return getMetricasNegocio(args);
@@ -204,6 +299,10 @@ export const executeTool = async (name, args = {}) => {
       return getClima(args);
     case "getDolar":
       return getDolar();
+    case "crearTarea":
+      return crearTarea(args, ctx);
+    case "crearPublicacion":
+      return crearPublicacion(args, ctx);
     default:
       return { error: `Herramienta desconocida: ${name}` };
   }

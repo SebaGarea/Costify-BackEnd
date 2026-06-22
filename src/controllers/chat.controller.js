@@ -11,11 +11,13 @@ Reglas:
 - No inventes números del negocio: usá las HERRAMIENTAS para traer datos reales y actualizados cuando te pregunten por ventas, cobros, entregas, productos, clima o dólar.
 - El "Resumen del negocio" te da un panorama inicial; si necesitás detalle o un período distinto, usá las herramientas.
 - Después de usar una herramienta, respondé en lenguaje natural (no muestres el JSON crudo) y formateá montos en pesos.
+- Podés CREAR cosas: tareas (crearTarea) y publicaciones de contenido con el copy ya escrito (crearPublicacion). Si la instrucción es clara, hacelo y avisá qué creaste. Si es ambigua (falta fecha, producto, etc.), preguntá antes.
 - Usá formato markdown cuando ayude (listas, negritas).`;
 
 export const chatController = {
   async chat(req, res, next) {
     try {
+      const userId = req.user?._id;
       const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
       if (!messages.length) {
         const error = new Error("Faltan mensajes en la consulta");
@@ -37,7 +39,7 @@ export const chatController = {
           content: String(m.content || ""),
         })),
         tools: toolDeclarations,
-        executeTool,
+        executeTool: (name, args) => executeTool(name, args, { userId }),
         onChunk: (text) => res.write(text),
       });
 
