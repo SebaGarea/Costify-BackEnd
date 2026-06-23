@@ -29,11 +29,20 @@ echo "==> 4/4 Estado de los contenedores:"
 docker compose -f docker-compose.prod.yml ps
 
 echo ""
-echo "==> Verificando /health..."
-sleep 3
-if curl -fsS https://costify.duckdns.org/health > /dev/null; then
+echo "==> Verificando /health (la app tarda unos segundos en arrancar)..."
+OK=0
+for i in $(seq 1 10); do
+  if curl -fsS https://costify.duckdns.org/health > /dev/null 2>&1; then
+    OK=1
+    break
+  fi
+  echo "    intento $i/10... esperando a que la app responda"
+  sleep 3
+done
+
+if [ "$OK" -eq 1 ]; then
   echo "✅ Deploy OK — el backend responde con HTTPS."
 else
-  echo "⚠️  El /health no respondió. Revisá los logs:"
+  echo "⚠️  El /health no respondió tras 30s. Revisá los logs:"
   echo "    docker compose -f docker-compose.prod.yml logs --tail 40"
 fi
