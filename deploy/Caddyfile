@@ -1,0 +1,19 @@
+# Caddy hace de reverse proxy y saca/renueva el certificado HTTPS solo
+# (Let's Encrypt) usando el dominio DuckDNS. No tenés que tocar nada de SSL.
+#
+# Las variables {$DOMAIN} y {$ACME_EMAIL} se leen del .env.production.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# Todo el tráfico entrante se reenvía al contenedor del backend (api:8080).
+	reverse_proxy api:8080
+
+	encode gzip
+
+	log {
+		output stdout
+	}
+}
