@@ -1,0 +1,50 @@
+# ============================================================
+#  Costify Backend — Deploy de producción (Oracle Cloud / cualquier VM)
+# ============================================================
+# Levanta 2 contenedores:
+#   - api    -> tu backend Node (puerto interno 8080, NO expuesto a internet)
+#   - caddy  -> reverse proxy con HTTPS automático (Let's Encrypt) en 80/443
+#
+# Uso (parado en la carpeta deploy/):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Ver logs:        docker compose -f docker-compose.prod.yml logs -f
+# Actualizar:      git pull && docker compose -f docker-compose.prod.yml up -d --build
+# Parar todo:      docker compose -f docker-compose.prod.yml down
+
+services:
+  api:
+    build:
+      context: ..              # el Dockerfile está en la raíz del repo
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env.production
+    expose:
+      - "8080"                 # solo visible para caddy, nunca directo a internet
+    networks:
+      - costify
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    env_file:
+      - .env.production         # lee DOMAIN y ACME_EMAIL
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data        # certificados persistentes (¡no borrar!)
+      - caddy-config:/config
+    depends_on:
+      - api
+    networks:
+      - costify
+
+networks:
+  costify:
+
+volumes:
+  caddy-data:
+  caddy-config:
