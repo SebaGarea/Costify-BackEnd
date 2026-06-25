@@ -87,3 +87,51 @@ export const buildBusinessContext = async () => {
   if (!lines.length) return "No hay datos de negocio disponibles en este momento.";
   return lines.join("\n");
 };
+
+/**
+ * Resumen proactivo para el saludo inicial del asistente. Es determinístico
+ * (NO usa la IA, así no consume cuota) y resalta lo accionable del día.
+ */
+export const buildResumenProactivo = async () => {
+  const now = new Date();
+  const finHoy = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const safe = (p, fallback) => p.catch(() => fallback);
+
+  const [vencidas, entregasHoy, cobro, tareasVencen] = await Promise.all([
+    safe(
+      VentasModel.countDocuments({ estado: { $ne: "despachada" }, fechaLimite: { $lt: now, $ne: null } }),
+      0
+    ),
+    safe(
+      VentasModel.countDocuments({
+        estado: { $ne: "despachada" },
+        fechaLimite: { $gte: now, $lte: finHoy },
+      }),
+      0
+    ),
+    safe(
+      VentasModel.aggregate([
+        { $match: { restan: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: "$restan" }, count: { $sum: 1 } } },
+      ]),
+      []
+    ),
+    safe(
+      TareasModel.countDocuments({ status: { $ne: "hecho" }, dueDate: { $ne: null, $lte: finHoy } }),
+      0
+    ),
+  ]);
+
+  const puntos = [];
+  if (vencidas) puntos.push(`🔴 ${vencidas} entrega${vencidas > 1 ? "s" : ""} **vencida${vencidas > 1 ? "s" : ""}**`);
+  if (entregasHoy) puntos.push(`🚚 ${entregasHoy} entrega${entregasHoy > 1 ? "s" : ""} para **hoy**`);
+  if (cobro?.[0]?.count) {
+    puntos.push(`💰 ${fmtMoneda(cobro[0].total)} pendiente de cobro (${cobro[0].count} venta${cobro[0].count > 1 ? "s" : ""})`);
+  }
+  if (tareasVencen) puntos.push(`📋 ${tareasVencen} tarea${tareasVencen > 1 ? "s" : ""} que vence${tareasVencen > 1 ? "n" : ""} hoy o antes`);
+
+  if (!puntos.length) {
+    return "👋 ¡Hola! No tenés pendientes urgentes hoy. ¿En qué te ayudo?";
+  }
+  return `👋 ¡Hola! Esto es lo que requiere tu atención:\n\n${puntos.map((p) => `- ${p}`).join("\n")}`;
+};

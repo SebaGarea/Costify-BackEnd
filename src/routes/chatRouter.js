@@ -13,9 +13,9 @@ const chatLimiter = rateLimit({
 
 export const router = Router();
 
-router.post(
-  "/",
-  passport.authenticate("jwt", { session: false }),
-  chatLimiter,
-  chatController.chat
-);
+const auth = passport.authenticate("jwt", { session: false });
+
+router.post("/", auth, chatLimiter, chatController.chat);
+router.get("/history", auth, chatController.history);
+router.delete("/history", auth, chatController.clearHistory);
+router.get("/resumen", auth, chatController.resumen);

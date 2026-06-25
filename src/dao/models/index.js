@@ -8,3 +8,4 @@ export * from "./InvitationSchema.js";
 export * from "./TareasSchema.js";
 export * from "./EventoCalendarioSchema.js";
 export * from "./ContenidoSchema.js";
+export * from "./ChatMessageSchema.js";

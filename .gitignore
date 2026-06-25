@@ -7,6 +7,9 @@ info.txt
 Tareas.txt
 mejoras.md
 
+# Guía de deploy (nota personal, no necesaria en el servidor)
+deploy/DEPLOY-ORACLE.md
+
 # Logs
 logs/
 *.log
