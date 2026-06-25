@@ -1,131 +1,143 @@
-# Costify
+# Costify — BackEnd
 
-Costify es una aplicación para la gestión de costos de fabricación de productos, pensada para talleres, fábricas y emprendimientos que necesitan calcular precios de venta de manera flexible y precisa, considerando insumos, servicios y plataformas de venta.
+> API REST para la gestión integral de un negocio de fabricación a medida: costos, ventas, producción, contenido de redes y un **asistente de IA** con tool-calling sobre los datos reales del negocio. Construida con **Node.js**, **Express** y **MongoDB**.
 
----
-
-## 🚀 Funcionalidades principales
-
-- **Gestión de Materias Primas:**  
-  Carga y administra insumos con nombre, categoría, unidad de medida, stock y valor por unidad.
-
-- **Plantillas de Costos:**  
-  Crea “recetas” para productos combinando distintos materiales, cantidades, servicios extra y porcentaje de ganancia.
-
-- **Catálogo de Productos:**  
-  Relaciona plantillas de costos con productos finales y visualiza el costo y precio de venta según cada plataforma.
-
-- **Gestión de Ventas:**  
-  Registra ventas, controla estados, calcula totales y gestiona clientes.
-
-- **Autenticación y autorización:**  
-  Login local y con Google, protección de rutas con JWT y control de roles.
-
-- **Validación profesional de datos:**  
-  Todas las rutas que reciben datos usan middlewares de [express-validator](https://express-validator.github.io/docs/) para asegurar la calidad y seguridad de la información.
+![Node](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
+![Gemini](https://img.shields.io/badge/IA-Google_Gemini-8E75B2?logo=google&logoColor=white)
+![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
 ---
 
-## 🆕 Últimas mejoras
+## 📖 Descripción
 
-- **Cobertura de pruebas ampliada:** ahora cada entidad clave (materias primas, productos, plantillas, ventas y usuarios) tiene tests de integración para los flujos de actualización y borrado, incluyendo casos 200 y 404.
-- **Validaciones más estrictas en plantillas de costo:** los middlewares verifican IDs, estructura de items y porcentajes personalizados, registrando advertencias detalladas en Winston cuando hay errores.
-- **Actualización segura de usuarios:** el servicio vuelve a hashear contraseñas al modificar perfiles y abstrae el DAO para facilitar los tests unitarios.
-- **Entorno de pruebas determinista:** los tests de integración usan un stub de `passport.authenticate` y servicios mockeados para evitar dependencias externas y validar las respuestas HTTP de la API.
-- **Capa extra de seguridad HTTP:** se incorporó [Helmet](https://github.com/helmetjs/helmet) para endurecer cabeceras y evitar ataques comunes en navegadores, manteniendo compatibilidad con Swagger.
-- **Docker first:** se añadieron `Dockerfile` y `docker-compose.yml` para levantar API + MongoDB con un solo comando y facilitar paridad entre entornos.
-- **CI en GitHub Actions:** el workflow [ci.yml](.github/workflows/ci.yml) ejecuta `npm ci`, linting, tests, `docker build` y publica la imagen en GHCR en cada push/PR.
-- **Despliegue automático en Render:** tras un commit en `main`, la Action dispara el Deploy Hook de Render, asegurando que producción siempre corra la última build validada.
+**Costify** ayuda a talleres, fábricas y emprendimientos a calcular precios de venta de forma flexible y precisa, controlar ventas y cobros, organizar la producción y planificar contenido. Este repositorio contiene la **API**, consumida por el [frontend en React](https://github.com/SebaGarea/Costify-FronEnd).
 
 ---
 
+## 🚀 Funcionalidades
 
-## 🛠️ Tecnologías utilizadas
+### Dominio del negocio
+- **Materias primas** — insumos con categoría, tipo, medida, stock y precio; importación masiva desde Excel.
+- **Plantillas de costo (presupuestos)** — "recetas" por secciones (herrería, carpintería, pintura, otros) con materiales, consumibles, extras, porcentajes de ganancia y cálculo de **precios por plataforma**. Soportan **archivos adjuntos** (PDF/imágenes vía Cloudinary) y comentarios.
+- **Productos** — catálogo vinculado a plantillas, con **imágenes en Cloudinary** y stock; precio recalculado en vivo desde la plantilla.
+- **Ventas** — registro con estados, seña, saldo, snapshots de precio/materiales, fecha de entrega y cliente.
+- **Tareas** — recordatorios con prioridad, vencimiento, tags y estados.
+- **Eventos de calendario** — eventos manuales para la vista unificada.
+- **Contenido de redes** — planificación de publicaciones por canal (idea → programada → publicada).
+- **Lista de compras** — documento colaborativo por secciones.
+- **Configuración** — perfil del negocio (usado como contexto del asistente de IA).
 
-- **Backend:** Node.js, Express, MongoDB, Mongoose
-- **Autenticación:** Passport (local, JWT, Google)
-- **Validación:** express-validator
-- **Documentación interactiva:** Swagger (`swagger-ui-express`, `swagger-jsdoc`)
-- **Testing y QA:** Mocha, Chai, Sinon, Supertest (integración end-to-end) y Jest para utilidades puntuales
-- **Seguridad HTTP:** Helmet para configurar cabeceras seguras y mitigar XSS/clickjacking
-- **Frontend:** React (en desarrollo)
-- **Control de versiones:** Git & GitHub
-- **Logging profesional:** Winston (logs estructurados en consola y archivos)
+### Asistente de IA 🤖
+- Endpoint de **chat con streaming** basado en **Google Gemini** con **tool-calling**.
+- **Herramientas de lectura**: métricas del negocio, entregas próximas, búsqueda de productos, materias con stock bajo, márgenes por producto, comparación de ventas mensuales, clima, dólar y búsqueda web.
+- **Herramientas de escritura**: crear/completar/editar/borrar tareas, registrar cobros, marcar entregas, crear ventas y productos, sumar a la lista de compras y crear publicaciones.
+- **Contexto real**: inyecta un resumen del negocio + la fecha actual (zona horaria de Argentina) + el perfil del negocio en el prompt.
+- **Historial server-side** por usuario, **resumen proactivo** determinístico (sin consumir cuota de IA), **rate-limit** y **modelo de respaldo** con reintentos ante errores transitorios (503).
+
+### Transversal
+- **Autenticación y autorización** — Passport (local, JWT y Google OAuth 2.0).
+- **Validación profesional** de datos con [express-validator](https://express-validator.github.io/).
+- **Seguridad HTTP** con [Helmet](https://github.com/helmetjs/helmet) y rate limiting.
+- **Documentación interactiva** con Swagger.
+- **Logging estructurado** con Winston.
+- **Emails** transaccionales (invitaciones) con Nodemailer.
+
+---
+
+## 🛠️ Tecnologías
+
+| Categoría | Stack |
+|---|---|
+| **Core** | Node.js, Express, MongoDB, Mongoose |
+| **IA** | [@google/generative-ai](https://www.npmjs.com/package/@google/generative-ai) (Gemini) |
+| **Auth** | Passport (local, JWT, Google OAuth 2.0), bcrypt |
+| **Archivos / Media** | Cloudinary, Multer |
+| **Seguridad** | Helmet, express-rate-limit, express-validator |
+| **Docs** | Swagger (`swagger-ui-express`, `swagger-jsdoc`) |
+| **Email** | Nodemailer |
+| **Logging** | Winston |
+| **Datos auxiliares** | xlsx (importación Excel) |
+| **Testing** | Mocha, Chai, Sinon, Supertest |
+| **Infra** | Docker, Caddy (reverse proxy + TLS) |
 
 ---
 
 ## 📦 Instalación y uso
 
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/SebaGarea/Costify-App.git
-   ```
-2. Instala las dependencias:
-  ```bash
-  npm install
-  ```
-  > Incluye las dependencias para Swagger:
-  > ```bash
-  > npm install swagger-ui-express swagger-jsdoc
-  > ```
-3. Crea un archivo `.env` con tus variables de entorno (ver ejemplo en `.env.example` si existe).
-4. Inicia el servidor:
-   ```bash
-   npm start
-   ```
+```bash
+# 1. Clonar
+git clone https://github.com/SebaGarea/Costify-BackEnd.git
+cd Costify-BackEnd
 
-5. Ejecuta los tests automatizados:
-  ```bash
-  npm test
-  ```
+# 2. Dependencias
+npm install
 
-6. El backend estará disponible en `http://localhost:8080` por defecto.
-7. La documentación interactiva de la API estará disponible en:
-  - [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+# 3. Variables de entorno (.env) — ver sección siguiente
+
+# 4. Levantar en desarrollo (con nodemon)
+npm run dev
+
+# 5. Producción
+npm start
+```
+
+El servidor queda en `http://localhost:8080` y la documentación Swagger en [`/api-docs`](http://localhost:8080/api-docs).
+
+### 🔑 Variables de entorno principales
+
+```bash
+PORT=8080
+MONGO_URI=mongodb://localhost:27017/costify
+JWT_SECRET=tu_secreto
+FRONTEND_URL=http://localhost:5173
+
+# Google OAuth
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_CALLBACK_URL=http://localhost:8080/api/sessions/googlecallback
+
+# Cloudinary (imágenes de productos / adjuntos de plantillas)
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+
+# Asistente de IA (Google Gemini)
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash-lite          # opcional
+GEMINI_FALLBACK_MODEL=gemini-2.0-flash      # opcional
+```
 
 ---
 
-### 🐳 Ejecutar con Docker
+## 🐳 Docker
 
 ```bash
 docker compose up --build
 ```
 
-Este comando levanta:
-
-- API Node/Express en `http://localhost:8080`
-- MongoDB local (`mongodb://mongo:27017/costify`)
-
-Las variables por defecto se definen en `.env.docker`. Ajusta los puertos según tus necesidades.
+Levanta la API y MongoDB. Para producción, la carpeta [`deploy/`](deploy/) incluye `docker-compose.prod.yml`, `Caddyfile` (reverse proxy + TLS automático) y una guía paso a paso ([`DEPLOY-ORACLE.md`](deploy/DEPLOY-ORACLE.md)).
 
 ---
 
-### 🧪 Testing automatizado
+## 🧪 Testing
 
-- **Ejecución completa:**
-  ```bash
-  npm test
-  ```
-- **Unitarios (servicios, utilidades):**
-  ```bash
-  npm run test:unit
-  ```
-- **Integración (endpoints REST):**
-  ```bash
-  npm run test:integration
-  ```
+```bash
+npm test               # unitarios + integración
+npm run test:unit      # servicios y utilidades
+npm run test:integration  # endpoints REST
+```
 
-Detalle: los tests de integración levantan la app con `supertest`, mockean autenticación con un stub de `passport.authenticate` y reemplazan los servicios/DAOs con `sinon`, por lo que no requieren una base de datos real.
+Los tests de integración levantan la app con `supertest`, mockean la autenticación y reemplazan servicios/DAOs con `sinon`, por lo que no requieren una base de datos real.
 
 ---
 
-### ☁️ CI/CD y despliegue
+## ☁️ Despliegue
 
-1. **GitHub Actions:** `/.github/workflows/ci.yml` corre lint + tests, construye la imagen y la publica en `ghcr.io/SebaGarea/Costify-BackEnd`.
-2. **Render:** un Deploy Hook configurado en el servicio `costify-backend-1` se activa al finalizar la pipeline y Render reconstruye/actualiza el contenedor.
-3. **Entorno productivo:** disponible en `https://costify-backend-1.onrender.com`, con el mismo Dockerfile que se usa localmente.
-
-Para inspeccionar las ejecuciones visita la pestaña **Actions** del repo.
+- **Producción:** contenedor Docker en **Oracle Cloud** detrás de **Caddy** (TLS automático), con **Render** como entorno de respaldo.
+- **Frontend:** desplegado en **Vercel**.
 
 ---
 
@@ -135,130 +147,99 @@ Para inspeccionar las ejecuciones visita la pestaña **Actions** del repo.
 Costify-App/
 ├── src/
 │   ├── app.js
-│   ├── config/
-│   ├── controllers/
-│   ├── dao/
-│   ├── models/
-│   ├── routes/
-│   ├── services/
+│   ├── config/            # logger, passport, swagger, etc.
+│   ├── controllers/       # controladores por entidad (+ chat)
+│   ├── dao/               # acceso a datos y modelos Mongoose
+│   ├── routes/            # routers REST
+│   ├── services/          # lógica de negocio (+ ai, herramientas, contextoNegocio)
 │   ├── middlewares/
-│   │   └── validations/
-│   └── utils/
+│   │   └── validations/   # validaciones con express-validator
+│   └── utils/             # utilidades (pricing, etc.)
+├── deploy/                # Docker prod, Caddy y guía de despliegue
 ├── test/
 │   ├── integracion/
 │   └── unitarios/
-├── package.json
-├── README.md
-└── ...
+└── package.json
 ```
 
 ---
 
-
-## 📑 Ejemplo de endpoints principales
+## 📑 Endpoints principales
 
 ```http
-# Usuarios
+# Usuarios / sesiones
 POST   /api/usuarios/registro
 POST   /api/usuarios/login
 GET    /api/usuarios/current
-GET    /api/usuarios/:id
-PUT    /api/usuarios/:id
-DELETE /api/usuarios/:id
 
-# Productos
-GET    /api/productos
-POST   /api/productos
-GET    /api/productos/:id
-PUT    /api/productos/:id
-DELETE /api/productos/:id
-GET    /api/productos/catalogo/:catalogo
-GET    /api/productos/modelo/:modelo
+# Productos  (multipart: imágenes)
+GET|POST            /api/productos
+GET|PUT|DELETE      /api/productos/:id
 
-# Materias Primas
-GET    /api/materiasPrimas
-POST   /api/materiasPrimas
-GET    /api/materiasPrimas/:id
-PUT    /api/materiasPrimas/:id
-DELETE /api/materiasPrimas/:id
-GET    /api/materiasPrimas/categories
-GET    /api/materiasPrimas/category/:category
-GET    /api/materiasPrimas/type/:type
+# Materias primas
+GET|POST            /api/materiasPrimas
+GET|PUT|DELETE      /api/materiasPrimas/:id
 
-# Plantillas de Costo
-GET    /api/plantillas
-POST   /api/plantillas
-GET    /api/plantillas/:id
-PUT    /api/plantillas/:id
-DELETE /api/plantillas/:id
+# Plantillas de costo  (adjuntos PDF/imagen)
+GET|POST            /api/plantillas
+GET|PUT|DELETE      /api/plantillas/:id
 
 # Ventas
-GET    /api/ventas
-POST   /api/ventas
-GET    /api/ventas/:id
-PUT    /api/ventas/:id
-DELETE /api/ventas/:id
-GET    /api/ventas/cliente/:clienteId
-GET    /api/ventas/estado/:estado
+GET|POST            /api/ventas
+GET|PUT|DELETE      /api/ventas/:id
+
+# Tareas
+GET|POST            /api/tareas
+GET|PUT|DELETE      /api/tareas/:id
+
+# Eventos de calendario
+GET|POST|PUT|DELETE /api/eventos
+
+# Contenido (redes)
+GET|POST|PUT|DELETE /api/contenido
+
+# Lista de compras
+GET|PUT             /api/lista-compras
+
+# Configuración
+GET|PUT             /api/configuracion
+
+# Asistente de IA
+POST   /api/chat            # chat con streaming + tool-calling
+GET    /api/chat/history    # historial del usuario
+DELETE /api/chat/history    # limpiar historial
+GET    /api/chat/resumen    # resumen proactivo del negocio
 ```
-> Todas las rutas protegidas requieren autenticación JWT.
-> Consulta la documentación Swagger para detalles de parámetros y respuestas.
+
+> Las rutas protegidas requieren JWT. Consultá Swagger (`/api-docs`) para parámetros y respuestas.
 
 ---
 
-## ⚠️ Estado del proyecto
+## 📝 Logging con Winston
 
-Este proyecto **está en desarrollo** y puede contener cambios frecuentes y funcionalidades incompletas.
+Logs estructurados en consola y archivos (`logs/error.log`, `logs/combined.log`). Controladores, servicios y middlewares registran eventos, advertencias y errores.
+
+```js
+import logger from "./config/logger.js";
+logger.info("Venta creada", { ventaId: id });
+logger.error("Error en el chat IA", { error: err.message });
+```
 
 ---
 
+## 🗺️ Roadmap
 
-## 💡 Roadmap
-
-- [x] Validación profesional de datos con express-validator
-- [x] Autenticación de usuarios y protección de rutas
+- [x] Autenticación (local + Google) y protección de rutas con JWT
+- [x] Validación con express-validator y seguridad con Helmet
 - [x] Documentación Swagger/OpenAPI
 - [x] Logging con Winston
 - [x] Tests automatizados (unitarios + integración)
-- [ ] Gestión avanzada de stock
-- [ ] Reportes y estadísticas de costos
+- [x] Asistente de IA con tool-calling, historial y resumen proactivo
+- [x] Despliegue con Docker + Caddy en Oracle Cloud
+- [ ] Reportes y estadísticas avanzadas de costos
 - [ ] Exportación de presupuestos
 - [ ] Panel de administración y control de roles
-- [ ] Despliegue en la nube
 
 ---
 
-## 🤝 Contribuciones
-
-¡Las contribuciones son bienvenidas!  
-Si tienes ideas, sugerencias o encuentras un bug, abre un issue o haz un pull request siguiendo las buenas prácticas del repositorio.
-
----
-
-
-## 📝 Logging profesional con Winston
-
-El proyecto implementa logs estructurados usando [Winston](https://github.com/winstonjs/winston):
-
-- Todos los controladores, servicios y middlewares registran eventos importantes, advertencias y errores.
-- Los logs se muestran en consola (con colores según el nivel) y se guardan en archivos dentro de la carpeta `logs/`.
-- Los errores y advertencias de validación también quedan registrados para facilitar el monitoreo y debugging.
-- Los archivos principales de log son:
-  - `logs/error.log`: solo errores
-  - `logs/combined.log`: todos los eventos
-- Puedes revisar los logs para analizar el funcionamiento y detectar problemas en producción.
-
-**Ejemplo de uso en el código:**
-```js
-import logger from './config/logger.js';
-
-logger.info('Usuario creado correctamente', { usuarioId: id });
-logger.warn('Stock bajo en producto', { productoId, stock });
-logger.error('Error al crear venta', { error: err.message, stack: err.stack });
-```
-
-Para más detalles, revisa la configuración en `src/config/logger.js`.
-
----
-
-**Hecho con dedicacion por Sebastian Garea**
+**Hecho con dedicación por [Sebastián Garea](https://github.com/SebaGarea)**
