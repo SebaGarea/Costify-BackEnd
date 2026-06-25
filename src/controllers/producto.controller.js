@@ -113,14 +113,44 @@ export const productoController = {
       }
 
       let updateData = { ...req.body };
-      if (req.files && req.files.length > 0) {
-        if (productoActual.imagenesPublicIds && productoActual.imagenesPublicIds.length > 0) {
-          await deleteCloudinaryAssets(productoActual.imagenesPublicIds);
+
+      // Manejo incremental de imágenes: conservar las que el usuario dejó,
+      // borrar de Cloudinary solo las quitadas y agregar las nuevas.
+      const tieneKeep = typeof req.body.keepImagenes !== "undefined";
+      if (tieneKeep || (req.files && req.files.length > 0)) {
+        // Listas paralelas (url + publicId) que el usuario decidió conservar.
+        let keepUrls = [];
+        let keepPublicIds = [];
+        if (tieneKeep) {
+          try { keepUrls = JSON.parse(req.body.keepImagenes) || []; } catch { keepUrls = []; }
+          try { keepPublicIds = JSON.parse(req.body.keepPublicIds || "[]") || []; } catch { keepPublicIds = []; }
         }
-        const uploadResult = await uploadProductImages(req.files);
-        updateData.imagenes = uploadResult.urls;
-        updateData.imagenesPublicIds = uploadResult.publicIds;
+
+        // Borrar de Cloudinary los que ya no se conservan.
+        const oldPublicIds = productoActual.imagenesPublicIds || [];
+        const keepSet = new Set(keepPublicIds.filter(Boolean));
+        const toDelete = oldPublicIds.filter((pid) => pid && !keepSet.has(pid));
+        if (toDelete.length > 0) {
+          await deleteCloudinaryAssets(toDelete);
+        }
+
+        // Subir las imágenes nuevas (si las hay).
+        let newUrls = [];
+        let newPublicIds = [];
+        if (req.files && req.files.length > 0) {
+          const uploadResult = await uploadProductImages(req.files);
+          newUrls = uploadResult.urls;
+          newPublicIds = uploadResult.publicIds;
+        }
+
+        // Resultado final = conservadas + nuevas (manteniendo el orden y la
+        // alineación entre urls y publicIds).
+        updateData.imagenes = [...keepUrls, ...newUrls];
+        updateData.imagenesPublicIds = [...keepPublicIds, ...newPublicIds];
       }
+      // Estos campos auxiliares no son del modelo: no persistirlos.
+      delete updateData.keepImagenes;
+      delete updateData.keepPublicIds;
       const producto = await productoService.updateProducto(req.params.id, updateData);
       if(!producto) {
         logger.warn(`Producto no encontrado para actualizar, ID: ${req.params.id}`);
