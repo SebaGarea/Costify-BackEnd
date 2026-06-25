@@ -126,7 +126,16 @@ export const chatController = {
     } catch (error) {
       logger.error("Error en el chat IA", { error: error.message });
       if (!res.headersSent) {
-        error.status = error.status || 500;
+        const m = (error.message || "").toLowerCase();
+        const sobrecargado =
+          error.status === 503 || error.status === 429 ||
+          m.includes("overloaded") || m.includes("unavailable") || m.includes("503");
+        if (sobrecargado) {
+          error.status = 503;
+          error.message = "El asistente está sobrecargado en este momento. Probá de nuevo en unos segundos.";
+        } else {
+          error.status = error.status || 500;
+        }
         return next(error);
       }
       res.end();
