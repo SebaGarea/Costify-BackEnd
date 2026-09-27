@@ -3,6 +3,9 @@ import { MateriaPrimaModel } from '../dao/models/index.js';
 import { computePlanillaPricing } from '../utils/pricing.js';
 import { normalizeExtrasPayload, calculateExtrasTotal } from '../utils/planillaExtras.js';
 import { uploadPlantillaArchivos, deleteCloudinaryAssets } from './cloudinary.service.js';
+import { listaCompraService } from './listaCompra.service.js';
+import { randomUUID } from 'crypto';
+import logger from '../config/logger.js';
 
 class PlantillaCostoService {
   constructor(dao) {
@@ -151,7 +154,38 @@ class PlantillaCostoService {
 
   async getPlantillaById(id) {
     const planilla = await this.dao.getById(id);
+    await this._asegurarUidsItems(planilla);
     return this._attachLivePricing(planilla);
+  }
+
+  // Los ítems creados antes de existir el campo `uid` no lo tienen: se lo
+  // asignamos y persistimos para que la lista de compras pueda vincularlos.
+  async _asegurarUidsItems(planilla) {
+    const items = Array.isArray(planilla?.items) ? planilla.items : [];
+    const asignaciones = [];
+    items.forEach((item, index) => {
+      if (item && !item.uid) {
+        item.uid = randomUUID();
+        asignaciones.push({ index, uid: item.uid });
+      }
+    });
+    if (!asignaciones.length) return;
+    try {
+      await this.dao.setItemUids(planilla._id, asignaciones);
+    } catch (error) {
+      logger.error('No se pudieron asignar los uid de los ítems de la plantilla', { error });
+    }
+  }
+
+  // Mantiene la lista de compras alineada con la planilla guardada. Si falla,
+  // no se corta el guardado de la planilla.
+  async _sincronizarListaCompra(planilla) {
+    if (!planilla) return;
+    try {
+      await listaCompraService.sincronizarPlantilla(planilla);
+    } catch (error) {
+      logger.error('No se pudo sincronizar la lista de compras con la plantilla', { error });
+    }
   }
 
   async updatePlantilla(id, data) {
@@ -173,7 +207,7 @@ class PlantillaCostoService {
       const tipoProyectoFinal = data.tipoProyecto || 'Otro';
       const tagsFinal = Array.isArray(data.tags) ? data.tags : [];
 
-      return await this.dao.update(id, {
+      const actualizada = await this.dao.update(id, {
         nombre: data.nombre,
         items: basePlanilla.items,
         porcentajesPorCategoria: basePlanilla.porcentajesPorCategoria,
@@ -191,6 +225,8 @@ class PlantillaCostoService {
         precioPinturaPersonalizado: Boolean(data.precioPinturaPersonalizado),
         comentarios: typeof data.comentarios === 'string' ? data.comentarios : '',
       });
+      await this._sincronizarListaCompra(actualizada);
+      return actualizada;
     }
 
     const itemsActualizados = Array.isArray(data.items)
@@ -216,7 +252,7 @@ class PlantillaCostoService {
     const tipoProyectoFinal = data.tipoProyecto ?? plantillaExistente.tipoProyecto ?? 'Otro';
     const tagsFinal = Array.isArray(data.tags) ? data.tags : (plantillaExistente.tags || []);
 
-    return await this.dao.update(id, {
+    const actualizada = await this.dao.update(id, {
       nombre: nombreFinal,
       items: itemsActualizados,
       porcentajesPorCategoria: porcentajesActualizados,
@@ -237,6 +273,8 @@ class PlantillaCostoService {
           ? data.comentarios
           : (plantillaExistente.comentarios ?? ''),
     });
+    await this._sincronizarListaCompra(actualizada);
+    return actualizada;
   }
 
   async addArchivos(id, files = []) {
@@ -264,7 +302,15 @@ class PlantillaCostoService {
     if (publicIds.length) {
       await deleteCloudinaryAssets(publicIds);
     }
-    return await this.dao.delete(id);
+    const eliminada = await this.dao.delete(id);
+    if (eliminada) {
+      try {
+        await listaCompraService.desvincularPlantilla(id);
+      } catch (error) {
+        logger.error('No se pudieron desvincular los ítems de la lista de compras', { error });
+      }
+    }
+    return eliminada;
   }
 
   async duplicatePlantilla(id, { nombre } = {}) {

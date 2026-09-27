@@ -1,8 +1,13 @@
 import mongoose from 'mongoose';
+import { randomUUID } from 'crypto';
 const { Schema } = mongoose;
 
 // Cada ítem representa un material usado en la plantilla
 const ItemSchema = new Schema({
+  // Identificador estable del ítem: sobrevive a cada guardado (el _id del
+  // subdocumento se regenera porque el array de items se reemplaza entero).
+  // Lo usa la lista de compras para saber qué ítem de la planilla vincula.
+  uid: { type: String, default: () => randomUUID() },
   materiaPrima: { type: Schema.Types.ObjectId, ref: 'materias_primas', required: false },
   valor: { type: Number, min: 0, default: 0 },
   cantidad: { type: Number, required: true },
