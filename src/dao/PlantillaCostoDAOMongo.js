@@ -17,6 +17,17 @@ export class PlantillaCostoDAOMongo {
     return await PlantillaCostoModel.findByIdAndUpdate(id, data, { new: true }).populate('items.materiaPrima').lean();
   }
 
+  // Completa el uid de ítems viejos (creados antes de que existiera el campo).
+  // `asignaciones` es [{ index, uid }] con la posición del ítem en el array.
+  static async setItemUids(id, asignaciones = []) {
+    if (!asignaciones.length) return null;
+    const $set = {};
+    asignaciones.forEach(({ index, uid }) => {
+      $set[`items.${index}.uid`] = uid;
+    });
+    return await PlantillaCostoModel.updateOne({ _id: id }, { $set });
+  }
+
   static async delete(id) {
     return await PlantillaCostoModel.findByIdAndDelete(id).lean();
   }

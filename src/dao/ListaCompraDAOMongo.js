@@ -15,6 +15,14 @@ export class ListaCompraDAOMongo {
     return doc;
   }
 
+  static async saveSectionItems(sectionItems) {
+    return await ListaCompraModel.findOneAndUpdate(
+      { key: SINGLETON_KEY },
+      { $set: { sectionItems } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).lean();
+  }
+
   static async save(payload = {}) {
     const update = {};
     if (payload.sectionItems !== undefined) {
