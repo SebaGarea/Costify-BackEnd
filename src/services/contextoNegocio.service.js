@@ -3,6 +3,7 @@ import {
   ProductoModel,
   TareasModel,
 } from "../dao/models/index.js";
+import { cajaService } from "./caja.service.js";
 
 const diasAtras = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 
@@ -70,6 +71,15 @@ export const buildBusinessContext = async () => {
     }
     if (vencidas != null) lines.push(`- Entregas vencidas sin despachar: ${vencidas}`);
     if (tareasPend != null) lines.push(`- Tareas pendientes: ${tareasPend}`);
+
+    const caja = await safe(cajaService.resumen(), null);
+    if (caja) {
+      const saldos = caja.cuentas.map((c) => `${c.nombre} ${fmtMoneda(c.saldo)}`).join(", ");
+      lines.push(`- Caja (saldos): ${saldos} — total ${fmtMoneda(caja.totales.total)}`);
+      lines.push(
+        `- Caja este mes: ingresos ${fmtMoneda(caja.ingresos)}, egresos ${fmtMoneda(caja.egresos)}`
+      );
+    }
   } catch {
     // degradado: devolvemos lo que se haya juntado
   }

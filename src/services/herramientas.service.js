@@ -7,6 +7,7 @@ import {
 import { webSearch } from "./ai.service.js";
 import { ventasService } from "./ventas.service.js";
 import { listaCompraService } from "./listaCompra.service.js";
+import { cajaService } from "./caja.service.js";
 
 const PRIORIDADES = ["alta", "media", "baja"];
 const SECCIONES_COMPRA = ["herreria", "carpinteria", "pintura", "otros"];
@@ -26,6 +27,7 @@ export const ENTIDAD_POR_TOOL = {
   crearVenta: "venta",
   crearProducto: "producto",
   agregarListaCompra: "compra",
+  registrarMovimiento: "caja",
 };
 
 const fetchJson = async (url, ms = 6000) => {
@@ -196,6 +198,7 @@ export const toolDeclarations = [
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         monto: { type: "NUMBER", description: "Monto cobrado." },
         producto: { type: "STRING", description: "Producto, para desambiguar si hay varias ventas (opcional)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró la plata: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente", "monto"],
     },
@@ -209,6 +212,7 @@ export const toolDeclarations = [
       properties: {
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         producto: { type: "STRING", description: "Producto, para desambiguar (opcional)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró el resto de la plata: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -228,6 +232,7 @@ export const toolDeclarations = [
         seña: { type: "NUMBER", description: "Seña/adelanto cobrado (opcional)." },
         fechaLimite: { type: "STRING", description: "Fecha de entrega YYYY-MM-DD (opcional)." },
         descripcion: { type: "STRING", description: "Detalle de la venta (opcional)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró la seña: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -262,6 +267,35 @@ export const toolDeclarations = [
         precio: { type: "NUMBER", description: "Precio estimado unitario (opcional)." },
       },
       required: ["texto"],
+    },
+  },
+  {
+    name: "registrarMovimiento",
+    description:
+      "Registra un gasto (egreso) o un ingreso de dinero en la Caja. Usalo cuando el usuario cuente que pagó/gastó algo o que entró plata que no es cobro de una venta (para cobros de ventas usá registrarCobro).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        tipo: { type: "STRING", description: "egreso (gasto) o ingreso." },
+        monto: { type: "NUMBER", description: "Monto en pesos." },
+        categoria: { type: "STRING", description: "Categoría por nombre, ej: Materiales, Flete / Combustible, Servicios, Impuestos, Otros gastos (opcional)." },
+        cuenta: { type: "STRING", description: "Cuenta: Efectivo, Mercado Pago, Naranja X, etc. (opcional; default Efectivo)." },
+        descripcion: { type: "STRING", description: "Detalle breve del movimiento." },
+        fecha: { type: "STRING", description: "Fecha YYYY-MM-DD (opcional, default hoy)." },
+      },
+      required: ["tipo", "monto"],
+    },
+  },
+  {
+    name: "consultarCaja",
+    description:
+      "Devuelve el saldo de cada cuenta de la Caja (efectivo, billeteras) y el resumen de ingresos, egresos y gastos por categoría de un período (default: mes actual).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        desde: { type: "STRING", description: "Fecha desde YYYY-MM-DD (opcional)." },
+        hasta: { type: "STRING", description: "Fecha hasta YYYY-MM-DD (opcional)." },
+      },
     },
   },
 ];
@@ -516,7 +550,93 @@ const findVentaPorCliente = async ({ cliente, producto, soloConSaldo = false, so
   return VentasModel.findOne(filtro).sort({ fecha: -1 });
 };
 
-const registrarCobro = async ({ cliente, monto, producto } = {}, ctx = {}) => {
+// ---------- Caja ----------
+const normalizar = (t = "") =>
+  String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+// Busca una cuenta de Caja por nombre aproximado ("mp", "mercadopago", "naranja").
+const cuentaPorNombre = async (texto) => {
+  if (!texto) return null;
+  const buscado = normalizar(texto).replace(/\s+/g, "");
+  const alias = { mp: "mercadopago", naranja: "naranjax", caja: "efectivo", cash: "efectivo" };
+  const objetivo = alias[buscado] || buscado;
+  const { cuentas } = await cajaService.listarCuentas();
+  const encontrada = cuentas.find((c) => {
+    const nombre = normalizar(c.nombre).replace(/\s+/g, "");
+    return nombre === objetivo || nombre.includes(objetivo) || objetivo.includes(nombre);
+  });
+  return encontrada ? String(encontrada._id) : null;
+};
+
+const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion, fecha } = {}, ctx = {}) => {
+  const tipoMov = tipo === "ingreso" ? "ingreso" : "egreso";
+  const m = Number(monto);
+  if (!Number.isFinite(m) || m <= 0) return { error: "El monto debe ser mayor a cero" };
+
+  const { cuentas } = await cajaService.listarCuentas();
+  let cuentaId = await cuentaPorNombre(cuenta);
+  if (cuenta && !cuentaId) {
+    return { error: "No encontré la cuenta \"" + cuenta + "\". Cuentas: " + cuentas.map((c) => c.nombre).join(", ") };
+  }
+  if (!cuentaId) {
+    const efectivo = cuentas.find((c) => !c.esDigital) || cuentas[0];
+    cuentaId = efectivo ? String(efectivo._id) : null;
+  }
+  if (!cuentaId) return { error: "No hay cuentas en la Caja" };
+
+  const categorias = await cajaService.listarCategorias();
+  const delTipo = categorias.filter((c) => c.tipo === tipoMov);
+  let cat = null;
+  if (categoria) {
+    const buscada = normalizar(categoria);
+    cat =
+      delTipo.find((c) => normalizar(c.nombre) === buscada) ||
+      delTipo.find((c) => normalizar(c.nombre).includes(buscada) || buscada.includes(normalizar(c.nombre))) ||
+      null;
+  }
+  if (!cat) {
+    const porDefecto = tipoMov === "egreso" ? "otros gastos" : "otros ingresos";
+    cat = delTipo.find((c) => normalizar(c.nombre) === porDefecto) || null;
+  }
+
+  try {
+    const mov = await cajaService.crearMovimiento(
+      {
+        tipo: tipoMov,
+        monto: m,
+        cuenta: cuentaId,
+        categoria: cat ? String(cat._id) : null,
+        descripcion: descripcion || "",
+        fecha: fecha ? String(fecha).slice(0, 10) : undefined,
+      },
+      ctx.userId
+    );
+    return {
+      ok: true,
+      tipo: tipoMov,
+      monto: mov.monto,
+      cuenta: mov.cuenta?.nombre,
+      categoria: mov.categoria?.nombre || "Sin categoría",
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+};
+
+const consultarCaja = async ({ desde, hasta } = {}) => {
+  const r = await cajaService.resumen({ desde, hasta });
+  return {
+    periodo: r.periodo,
+    saldos: r.cuentas.map((c) => ({ cuenta: c.nombre, saldo: c.saldo, digital: c.esDigital })),
+    totalDisponible: r.totales.total,
+    ingresos: r.ingresos,
+    egresos: r.egresos,
+    resultado: r.resultado,
+    gastosPorCategoria: r.egresosPorCategoria.map((c) => ({ categoria: c.nombre, total: c.total })),
+  };
+};
+
+const registrarCobro = async ({ cliente, monto, producto, cuenta } = {}, ctx = {}) => {
   if (!cliente) return { error: "Falta el cliente" };
   const m = Number(monto);
   if (!Number.isFinite(m) || m <= 0) return { error: "El monto debe ser mayor a cero" };
@@ -527,6 +647,7 @@ const registrarCobro = async ({ cliente, monto, producto } = {}, ctx = {}) => {
   venta.seña = Number(venta.seña || 0) + cobrado;
   venta.updatedBy = ctx.userId;
   await venta.save();
+  await cajaService.conciliarVenta(venta, { cuentaId: await cuentaPorNombre(cuenta), userId: ctx.userId });
   return {
     ok: true,
     cliente: venta.cliente,
@@ -536,7 +657,7 @@ const registrarCobro = async ({ cliente, monto, producto } = {}, ctx = {}) => {
   };
 };
 
-const marcarDespachada = async ({ cliente, producto } = {}, ctx = {}) => {
+const marcarDespachada = async ({ cliente, producto, cuenta } = {}, ctx = {}) => {
   if (!cliente) return { error: "Falta el cliente" };
   const venta = await findVentaPorCliente({ cliente, producto, soloActivas: true });
   if (!venta) return { error: `No encontré una venta activa de "${cliente}"` };
@@ -544,11 +665,12 @@ const marcarDespachada = async ({ cliente, producto } = {}, ctx = {}) => {
   venta.restan = 0;
   venta.updatedBy = ctx.userId;
   await venta.save();
+  await cajaService.conciliarVenta(venta, { cuentaId: await cuentaPorNombre(cuenta), userId: ctx.userId });
   return { ok: true, cliente: venta.cliente, producto: venta.productoNombre || "" };
 };
 
 const crearVenta = async (
-  { cliente, productoTexto, cantidad, precio, medio, seña, fechaLimite, descripcion } = {},
+  { cliente, productoTexto, cantidad, precio, medio, seña, fechaLimite, descripcion, cuenta } = {},
   ctx = {}
 ) => {
   if (!cliente) return { error: "Falta el nombre del cliente" };
@@ -580,6 +702,7 @@ const crearVenta = async (
         seña: Number(seña) > 0 ? Number(seña) : 0,
         fechaLimite: aFecha(fechaLimite),
         descripcion: descripcion || "",
+        cuentaCobro: await cuentaPorNombre(cuenta),
       },
       ctx.userId
     );
@@ -685,6 +808,10 @@ export const executeTool = async (name, args = {}, ctx = {}) => {
       return crearProducto(args, ctx);
     case "agregarListaCompra":
       return agregarListaCompra(args);
+    case "registrarMovimiento":
+      return registrarMovimiento(args, ctx);
+    case "consultarCaja":
+      return consultarCaja(args);
     default:
       return { error: `Herramienta desconocida: ${name}` };
   }
