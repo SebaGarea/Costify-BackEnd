@@ -2,15 +2,12 @@ import {
   VentasModel,
   ProductoModel,
   TareasModel,
-  ContenidoModel,
   MateriaPrimaModel,
 } from "../dao/models/index.js";
 import { webSearch } from "./ai.service.js";
 import { ventasService } from "./ventas.service.js";
 import { listaCompraService } from "./listaCompra.service.js";
 
-const CANALES_VALIDOS = ["instagram", "facebook", "tiktok", "tiendanube"];
-const TIPOS_VALIDOS = ["foto", "reel", "carrusel", "historia", "otro"];
 const PRIORIDADES = ["alta", "media", "baja"];
 const SECCIONES_COMPRA = ["herreria", "carpinteria", "pintura", "otros"];
 const aFecha = (s) => (s ? new Date(`${String(s).slice(0, 10)}T12:00:00.000Z`) : null);
@@ -24,7 +21,6 @@ export const ENTIDAD_POR_TOOL = {
   completarTarea: "tarea",
   editarTarea: "tarea",
   borrarTarea: "tarea",
-  crearPublicacion: "contenido",
   registrarCobro: "venta",
   marcarDespachada: "venta",
   crearVenta: "venta",
@@ -266,27 +262,6 @@ export const toolDeclarations = [
         precio: { type: "NUMBER", description: "Precio estimado unitario (opcional)." },
       },
       required: ["texto"],
-    },
-  },
-  {
-    name: "crearPublicacion",
-    description:
-      "Crea una publicación de contenido (idea) en la sección Contenido, con el copy ya escrito. Usalo cuando el usuario pida armar/cargar un posteo o generar un texto para publicar. Vos escribís el copy.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        titulo: { type: "STRING", description: "Título / idea de la publicación." },
-        copy: { type: "STRING", description: "Texto del posteo (caption + hashtags)." },
-        canales: {
-          type: "ARRAY",
-          items: { type: "STRING" },
-          description: "Canales: instagram, facebook, tiktok, tiendanube.",
-        },
-        tipo: { type: "STRING", description: "foto, reel, carrusel, historia." },
-        productoTexto: { type: "STRING", description: "Nombre del producto asociado (opcional)." },
-        fecha: { type: "STRING", description: "Fecha de publicación YYYY-MM-DD (opcional)." },
-      },
-      required: ["titulo", "copy"],
     },
   },
 ];
@@ -671,39 +646,6 @@ const agregarListaCompra = async ({ texto, cantidad, seccion, precio } = {}) => 
   return { ok: true, item: texto, seccion: sec, cantidad: item.cantidad };
 };
 
-// ---------- Acciones: Contenido ----------
-const crearPublicacion = async ({ titulo, copy, canales, tipo, productoTexto, fecha } = {}, ctx = {}) => {
-  if (!ctx.userId) return { error: "No se pudo identificar al usuario" };
-  if (!titulo) return { error: "Falta el título de la publicación" };
-
-  let producto = null;
-  if (productoTexto) {
-    const p = await ProductoModel.findOne({ $or: [{ nombre: rx(productoTexto) }, { modelo: rx(productoTexto) }] }).lean();
-    producto = p?._id || null;
-  }
-
-  const validCanales = (Array.isArray(canales) ? canales : []).filter((c) => CANALES_VALIDOS.includes(c));
-  const pub = await ContenidoModel.create({
-    titulo,
-    copy: copy || "",
-    canales: validCanales.length ? validCanales : ["instagram", "facebook"],
-    tipo: TIPOS_VALIDOS.includes(tipo) ? tipo : "foto",
-    fechaPublicacion: aFecha(fecha),
-    producto,
-    responsable: ctx.userId,
-    estado: "idea",
-    createdBy: ctx.userId,
-    updatedBy: ctx.userId,
-  });
-  return {
-    ok: true,
-    id: String(pub._id),
-    titulo: pub.titulo,
-    programada: !!pub.fechaPublicacion,
-    productoAsociado: Boolean(producto),
-  };
-};
-
 // ---------- Dispatcher ----------
 export const executeTool = async (name, args = {}, ctx = {}) => {
   switch (name) {
@@ -743,8 +685,6 @@ export const executeTool = async (name, args = {}, ctx = {}) => {
       return crearProducto(args, ctx);
     case "agregarListaCompra":
       return agregarListaCompra(args);
-    case "crearPublicacion":
-      return crearPublicacion(args, ctx);
     default:
       return { error: `Herramienta desconocida: ${name}` };
   }

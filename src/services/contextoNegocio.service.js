@@ -2,7 +2,6 @@ import {
   VentasModel,
   ProductoModel,
   TareasModel,
-  ContenidoModel,
 } from "../dao/models/index.js";
 
 const diasAtras = (n) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
@@ -32,7 +31,6 @@ export const buildBusinessContext = async () => {
       ventas30,
       pendienteCobro,
       vencidas,
-      contenidoProg,
     ] = await Promise.all([
       safe(ProductoModel.countDocuments(), null),
       safe(TareasModel.countDocuments({ status: { $ne: "hecho" } }), null),
@@ -57,13 +55,6 @@ export const buildBusinessContext = async () => {
         }),
         null
       ),
-      safe(
-        ContenidoModel.countDocuments({
-          fechaPublicacion: { $ne: null },
-          estado: { $ne: "publicado" },
-        }),
-        null
-      ),
     ]);
 
     if (totalProductos != null) lines.push(`- Productos en catálogo: ${totalProductos}`);
@@ -79,7 +70,6 @@ export const buildBusinessContext = async () => {
     }
     if (vencidas != null) lines.push(`- Entregas vencidas sin despachar: ${vencidas}`);
     if (tareasPend != null) lines.push(`- Tareas pendientes: ${tareasPend}`);
-    if (contenidoProg != null) lines.push(`- Publicaciones programadas: ${contenidoProg}`);
   } catch {
     // degradado: devolvemos lo que se haya juntado
   }
