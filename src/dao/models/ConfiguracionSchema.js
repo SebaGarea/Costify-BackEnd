@@ -21,6 +21,8 @@ const ConfiguracionSchema = new Schema(
     materiaPrimaPinturaId: { type: Schema.Types.ObjectId, ref: "materias_primas", default: null },
     porcentajesPlataformas: { type: PorcentajesPlataformasSchema, default: () => ({}) },
     perfilNegocio: { type: String, default: "", trim: true, maxlength: 2000 },
+    // Cuenta de Caja donde entran por defecto los cobros de ventas.
+    cuentaCobroDefault: { type: Schema.Types.ObjectId, ref: "CuentaDinero", default: null },
   },
   { timestamps: true }
 );

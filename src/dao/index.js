@@ -7,4 +7,3 @@ export * from './ListaCompraDAOMongo.js';
 export * from './InvitationDAOMongo.js';
 export * from './TareasDAOMongo.js';
 export * from './EventoCalendarioDAOMongo.js';
-export * from './ContenidoDAOMongo.js';

@@ -1,6 +1,6 @@
 # Costify — BackEnd
 
-> API REST para la gestión integral de un negocio de fabricación a medida: costos, ventas, producción, contenido de redes y un **asistente de IA** con tool-calling sobre los datos reales del negocio. Construida con **Node.js**, **Express** y **MongoDB**.
+> API REST para la gestión integral de un negocio de fabricación a medida: costos, ventas, producción y un **asistente de IA** con tool-calling sobre los datos reales del negocio. Construida con **Node.js**, **Express** y **MongoDB**.
 
 ![Node](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
@@ -13,7 +13,7 @@
 
 ## 📖 Descripción
 
-**Costify** ayuda a talleres, fábricas y emprendimientos a calcular precios de venta de forma flexible y precisa, controlar ventas y cobros, organizar la producción y planificar contenido. Este repositorio contiene la **API**, consumida por el [frontend en React](https://github.com/SebaGarea/Costify-FronEnd).
+**Costify** ayuda a talleres, fábricas y emprendimientos a calcular precios de venta de forma flexible y precisa, controlar ventas y cobros, organizar la producción. Este repositorio contiene la **API**, consumida por el [frontend en React](https://github.com/SebaGarea/Costify-FronEnd).
 
 ---
 
@@ -26,14 +26,13 @@
 - **Ventas** — registro con estados, seña, saldo, snapshots de precio/materiales, fecha de entrega y cliente.
 - **Tareas** — recordatorios con prioridad, vencimiento, tags y estados.
 - **Eventos de calendario** — eventos manuales para la vista unificada.
-- **Contenido de redes** — planificación de publicaciones por canal (idea → programada → publicada).
 - **Lista de compras** — documento colaborativo por secciones.
 - **Configuración** — perfil del negocio (usado como contexto del asistente de IA).
 
 ### Asistente de IA 🤖
 - Endpoint de **chat con streaming** basado en **Google Gemini** con **tool-calling**.
 - **Herramientas de lectura**: métricas del negocio, entregas próximas, búsqueda de productos, materias con stock bajo, márgenes por producto, comparación de ventas mensuales, clima, dólar y búsqueda web.
-- **Herramientas de escritura**: crear/completar/editar/borrar tareas, registrar cobros, marcar entregas, crear ventas y productos, sumar a la lista de compras y crear publicaciones.
+- **Herramientas de escritura**: crear/completar/editar/borrar tareas, registrar cobros, marcar entregas, crear ventas y productos y sumar a la lista de compras.
 - **Contexto real**: inyecta un resumen del negocio + la fecha actual (zona horaria de Argentina) + el perfil del negocio en el prompt.
 - **Historial server-side** por usuario, **resumen proactivo** determinístico (sin consumir cuota de IA), **rate-limit** y **modelo de respaldo** con reintentos ante errores transitorios (503).
 
@@ -194,9 +193,6 @@ GET|PUT|DELETE      /api/tareas/:id
 
 # Eventos de calendario
 GET|POST|PUT|DELETE /api/eventos
-
-# Contenido (redes)
-GET|POST|PUT|DELETE /api/contenido
 
 # Lista de compras
 GET|PUT             /api/lista-compras
