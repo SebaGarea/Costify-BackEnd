@@ -24,7 +24,7 @@ import logger from "../config/logger.js";
 // Cada operación se identifica por (mpPaymentId, mpTipo): nunca se importa dos veces.
 
 const API = "https://api.mercadopago.com";
-const INTERVALO_MS = 10 * 60 * 1000;
+const INTERVALO_MS = 60 * 1000;
 const POR_PAGINA = 100;
 const MAX_PAGINAS = 50;
 
@@ -332,14 +332,14 @@ class MercadoPagoService {
     return resultado;
   }
 
-  // Sincroniza al arrancar (con un pequeño retraso) y cada 10 minutos.
+  // Sincroniza al arrancar (con un pequeño retraso) y cada minuto.
   iniciarSincronizacionPeriodica() {
     if (!mercadoPagoHabilitado() || this.timer) return;
     const correr = () => this.sincronizar().catch(() => {});
     setTimeout(correr, 30 * 1000).unref?.();
     this.timer = setInterval(correr, INTERVALO_MS);
     this.timer.unref?.();
-    logger.info("Sincronización con Mercado Pago activada (cada 10 minutos)");
+    logger.info("Sincronización con Mercado Pago activada (cada 1 minuto)");
   }
 }
 
