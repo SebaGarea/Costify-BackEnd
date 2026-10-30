@@ -62,9 +62,6 @@ const MovimientoSchema = new Schema(
     },
     // Fecha en que Mercado Pago libera la plata (si todavía no está disponible).
     liberacion: { type: Date, default: null },
-    // Registrado a mano en la cuenta de Mercado Pago: se une con la operación
-    // importada por el mismo monto (así no se duplica).
-    esperaMP: { type: Boolean, default: false },
     createdBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
     updatedBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
   },

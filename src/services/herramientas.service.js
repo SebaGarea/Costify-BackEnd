@@ -198,7 +198,7 @@ export const toolDeclarations = [
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         monto: { type: "NUMBER", description: "Monto cobrado." },
         producto: { type: "STRING", description: "Producto, para desambiguar si hay varias ventas (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró la plata: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró la plata: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente", "monto"],
     },
@@ -212,7 +212,7 @@ export const toolDeclarations = [
       properties: {
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         producto: { type: "STRING", description: "Producto, para desambiguar (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró el resto de la plata: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró el resto de la plata: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -232,7 +232,7 @@ export const toolDeclarations = [
         seña: { type: "NUMBER", description: "Seña/adelanto cobrado (opcional)." },
         fechaLimite: { type: "STRING", description: "Fecha de entrega YYYY-MM-DD (opcional)." },
         descripcion: { type: "STRING", description: "Detalle de la venta (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró la seña: Efectivo, Mercado Pago, Naranja X, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
+        cuenta: { type: "STRING", description: "Cuenta donde entró la seña: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -279,7 +279,7 @@ export const toolDeclarations = [
         tipo: { type: "STRING", description: "egreso (gasto) o ingreso." },
         monto: { type: "NUMBER", description: "Monto en pesos." },
         categoria: { type: "STRING", description: "Categoría por nombre, ej: Materiales, Flete / Combustible, Servicios, Impuestos, Otros gastos (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta: Efectivo, Mercado Pago, Naranja X, etc. (opcional; default Efectivo)." },
+        cuenta: { type: "STRING", description: "Cuenta: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; default Efectivo)." },
         descripcion: { type: "STRING", description: "Detalle breve del movimiento." },
         fecha: { type: "STRING", description: "Fecha YYYY-MM-DD (opcional, default hoy)." },
       },
@@ -554,11 +554,11 @@ const findVentaPorCliente = async ({ cliente, producto, soloConSaldo = false, so
 const normalizar = (t = "") =>
   String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
-// Busca una cuenta de Caja por nombre aproximado ("mp", "mercadopago", "naranja").
+// Busca una cuenta de Caja por nombre aproximado ("mp", "mercadopago", "secundaria").
 const cuentaPorNombre = async (texto) => {
   if (!texto) return null;
   const buscado = normalizar(texto).replace(/\s+/g, "");
-  const alias = { mp: "mercadopago", naranja: "naranjax", caja: "efectivo", cash: "efectivo" };
+  const alias = { mp: "mercadopago", secundaria: "cuentasecundaria", caja: "efectivo", cash: "efectivo" };
   const objetivo = alias[buscado] || buscado;
   const { cuentas } = await cajaService.listarCuentas();
   const encontrada = cuentas.find((c) => {

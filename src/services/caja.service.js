@@ -55,7 +55,7 @@ const crearError = (message, status = 400) => {
 const CUENTAS_INICIALES = [
   { nombre: "Efectivo", tipo: "efectivo", esDigital: false, color: "green", orden: 0 },
   { nombre: "Mercado Pago", tipo: "billetera", esDigital: true, color: "blue", orden: 1 },
-  { nombre: "Naranja X", tipo: "billetera", esDigital: true, color: "orange", orden: 2 },
+  { nombre: "Cuenta secundaria", tipo: "billetera", esDigital: true, color: "orange", orden: 2 },
 ];
 
 const CATEGORIAS_INICIALES = [
@@ -96,6 +96,12 @@ const inicializar = async () => {
       );
       if (!existente) await CategoriaMovimientoModel.create(cat);
     }
+  }
+
+  // Naranja X se reemplazó por "Cuenta secundaria" (no tiene API pública).
+  // Se renombra conservando sus movimientos.
+  if (!(await CuentaDineroModel.exists({ nombre: "Cuenta secundaria" }))) {
+    await CuentaDineroModel.updateOne({ nombre: "Naranja X" }, { $set: { nombre: "Cuenta secundaria" } });
   }
 
   // La cuenta "Mercado Pago" queda conectada a la importación automática.
@@ -226,26 +232,6 @@ const buscarCobroMPSinVenta = (cuentaId, monto, fecha) =>
   })
     .sort({ fecha: -1 })
     .lean();
-
-const TRES_DIAS = 3 * 24 * 60 * 60 * 1000;
-
-// Movimiento cargado a mano en la cuenta de Mercado Pago (gasto, compra de la
-// lista, ingreso) que espera la operación importada por el mismo monto.
-export const buscarEsperandoMP = (cuentaId, tipo, monto, fecha) =>
-  MovimientoModel.findOne({
-    cuenta: cuentaId,
-    tipo,
-    esperaMP: true,
-    "origen.mpPaymentId": { $exists: false },
-    monto: { $gte: monto - 0.5, $lte: monto + 0.5 },
-    fecha: { $gte: new Date(fecha.getTime() - TRES_DIAS), $lte: new Date(fecha.getTime() + TRES_DIAS) },
-  })
-    .sort({ fecha: 1, createdAt: 1 })
-    .lean();
-
-const esperaMPPara = async (cuentaId, tipo) =>
-  ["ingreso", "egreso"].includes(tipo) &&
-  Boolean(await CuentaDineroModel.exists({ _id: cuentaId, integracion: "mercadopago" }));
 
 // Cobro de una venta registrado en la cuenta de Mercado Pago que todavía no se
 // asoció a ninguna operación de MP (para no duplicarlo al importar).
@@ -467,7 +453,6 @@ class CajaService {
     const campos = await this.validarMovimiento(data);
     const mov = await MovimientoModel.create({
       ...campos,
-      esperaMP: await esperaMPPara(campos.cuenta, campos.tipo),
       origen: { tipo: "manual" },
       createdBy: userId,
       updatedBy: userId,
@@ -502,7 +487,6 @@ class CajaService {
       throw crearError("Los ajustes de saldo no se editan: borralo y volvé a ajustar", 409);
     }
     const campos = await this.validarMovimiento(data, actual);
-    campos.esperaMP = await esperaMPPara(campos.cuenta, campos.tipo);
     await MovimientoModel.updateOne({ _id: id }, { $set: { ...campos, updatedBy: userId } });
     return this.obtenerMovimiento(id);
   }
@@ -655,6 +639,11 @@ class CajaService {
     if (!esObjectId(cuenta) || !(await CuentaDineroModel.exists({ _id: cuenta }))) {
       throw crearError("Elegí con qué cuenta se pagó");
     }
+    if (await CuentaDineroModel.exists({ _id: cuenta, integracion: "mercadopago" })) {
+      // Lo pagado con Mercado Pago entra solo (webhook/sincronización): cargarlo
+      // a mano lo duplicaría.
+      throw crearError("Los pagos con Mercado Pago se registran solos al sincronizar");
+    }
     const categoria = await getCategoriaSistema("materiales");
     const detalle = (Array.isArray(items) ? items : []).slice(0, 200).map((it) => ({
       nombre: String(it?.nombre || "").slice(0, 200),
@@ -676,7 +665,6 @@ class CajaService {
       descripcion:
         String(descripcion || "").trim() ||
         `Compra de materiales${resumenItems ? `: ${resumenItems}${detalle.length > 5 ? "…" : ""}` : ""}`,
-      esperaMP: await esperaMPPara(cuenta, "egreso"),
       origen: { tipo: "compra", detalleCompra: detalle },
       createdBy: userId,
       updatedBy: userId,
