@@ -198,7 +198,6 @@ export const toolDeclarations = [
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         monto: { type: "NUMBER", description: "Monto cobrado." },
         producto: { type: "STRING", description: "Producto, para desambiguar si hay varias ventas (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró la plata: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente", "monto"],
     },
@@ -212,7 +211,6 @@ export const toolDeclarations = [
       properties: {
         cliente: { type: "STRING", description: "Nombre del cliente de la venta." },
         producto: { type: "STRING", description: "Producto, para desambiguar (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró el resto de la plata: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -232,7 +230,6 @@ export const toolDeclarations = [
         seña: { type: "NUMBER", description: "Seña/adelanto cobrado (opcional)." },
         fechaLimite: { type: "STRING", description: "Fecha de entrega YYYY-MM-DD (opcional)." },
         descripcion: { type: "STRING", description: "Detalle de la venta (opcional)." },
-        cuenta: { type: "STRING", description: "Cuenta donde entró la seña: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; si no se dice, la cuenta de cobro por defecto)." },
       },
       required: ["cliente"],
     },
@@ -583,6 +580,9 @@ const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion
     cuentaId = efectivo ? String(efectivo._id) : null;
   }
   if (!cuentaId) return { error: "No hay cuentas en la Caja" };
+  if (cuentas.find((c) => String(c._id) === String(cuentaId))?.integracion === "mercadopago") {
+    return { error: "Los movimientos de Mercado Pago se importan solos: no se cargan a mano. Usá Efectivo." };
+  }
 
   const categorias = await cajaService.listarCategorias();
   const delTipo = categorias.filter((c) => c.tipo === tipoMov);
@@ -636,7 +636,7 @@ const consultarCaja = async ({ desde, hasta } = {}) => {
   };
 };
 
-const registrarCobro = async ({ cliente, monto, producto, cuenta } = {}, ctx = {}) => {
+const registrarCobro = async ({ cliente, monto, producto } = {}, ctx = {}) => {
   if (!cliente) return { error: "Falta el cliente" };
   const m = Number(monto);
   if (!Number.isFinite(m) || m <= 0) return { error: "El monto debe ser mayor a cero" };
@@ -647,7 +647,6 @@ const registrarCobro = async ({ cliente, monto, producto, cuenta } = {}, ctx = {
   venta.seña = Number(venta.seña || 0) + cobrado;
   venta.updatedBy = ctx.userId;
   await venta.save();
-  await cajaService.conciliarVenta(venta, { cuentaId: await cuentaPorNombre(cuenta), userId: ctx.userId });
   return {
     ok: true,
     cliente: venta.cliente,
@@ -657,7 +656,7 @@ const registrarCobro = async ({ cliente, monto, producto, cuenta } = {}, ctx = {
   };
 };
 
-const marcarDespachada = async ({ cliente, producto, cuenta } = {}, ctx = {}) => {
+const marcarDespachada = async ({ cliente, producto } = {}, ctx = {}) => {
   if (!cliente) return { error: "Falta el cliente" };
   const venta = await findVentaPorCliente({ cliente, producto, soloActivas: true });
   if (!venta) return { error: `No encontré una venta activa de "${cliente}"` };
@@ -665,12 +664,11 @@ const marcarDespachada = async ({ cliente, producto, cuenta } = {}, ctx = {}) =>
   venta.restan = 0;
   venta.updatedBy = ctx.userId;
   await venta.save();
-  await cajaService.conciliarVenta(venta, { cuentaId: await cuentaPorNombre(cuenta), userId: ctx.userId });
   return { ok: true, cliente: venta.cliente, producto: venta.productoNombre || "" };
 };
 
 const crearVenta = async (
-  { cliente, productoTexto, cantidad, precio, medio, seña, fechaLimite, descripcion, cuenta } = {},
+  { cliente, productoTexto, cantidad, precio, medio, seña, fechaLimite, descripcion } = {},
   ctx = {}
 ) => {
   if (!cliente) return { error: "Falta el nombre del cliente" };
@@ -702,7 +700,6 @@ const crearVenta = async (
         seña: Number(seña) > 0 ? Number(seña) : 0,
         fechaLimite: aFecha(fechaLimite),
         descripcion: descripcion || "",
-        cuentaCobro: await cuentaPorNombre(cuenta),
       },
       ctx.userId
     );

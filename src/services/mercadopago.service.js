@@ -7,7 +7,6 @@ import {
 import {
   aFechaMovimiento,
   asegurarDatosIniciales,
-  buscarCobroVentaSinMP,
   getCategoriaSistema,
 } from "./caja.service.js";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -306,15 +305,7 @@ class MercadoPagoService {
           const liberacion = fechaLiberacion(p);
 
           if (!(await existe(id, "cobro"))) {
-            // ¿Ya se registró este cobro desde una venta (marcada pagada en MP)?
-            const deVenta = await buscarCobroVentaSinMP(cuenta._id, bruto, fecha);
-            if (deVenta) {
-              await MovimientoModel.updateOne(
-                { _id: deVenta._id },
-                { $set: { "origen.mpPaymentId": id, "origen.mpTipo": "cobro", liberacion } }
-              );
-              resultado.vinculados += 1;
-            } else if (await crear({
+            if (await crear({
               tipo: "ingreso",
               monto: bruto,
               fecha,

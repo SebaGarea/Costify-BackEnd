@@ -26,7 +26,8 @@ export const ventasController = {
       // Si trae parámetros de paginación, devolver paginado
       if (req.query.page || req.query.limit) {
         logger.info(`Obteniendo ventas paginadas - Página: ${page}, Límite: ${limit}`);
-        const result = await ventasService.getAllVentasPaginated(page, limit);
+        const filtro = typeof req.query.filtro === 'string' ? req.query.filtro : 'todas';
+        const result = await ventasService.getAllVentasPaginated(page, limit, filtro);
         return res.json(result);
       }
       

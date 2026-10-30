@@ -22,7 +22,6 @@ router.get("/cuentas", auth, cajaController.listarCuentas);
 router.post("/cuentas", auth, validacionCuenta, cajaController.crearCuenta);
 router.put("/cuentas/:id", auth, validacionId, validacionCuenta, cajaController.actualizarCuenta);
 router.post("/cuentas/:id/ajuste", auth, validacionAjuste, cajaController.ajustarSaldo);
-router.put("/cuenta-cobro-default", auth, cajaController.setCuentaCobroDefault);
 
 router.get("/categorias", auth, cajaController.listarCategorias);
 router.post("/categorias", auth, validacionCategoria, cajaController.crearCategoria);

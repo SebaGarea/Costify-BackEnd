@@ -5,8 +5,6 @@ import {
   MovimientoModel,
   IntegracionMercadoPagoModel,
 } from "../dao/models/index.js";
-import { ConfiguracionModel } from "../dao/models/ConfiguracionSchema.js";
-import logger from "../config/logger.js";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -111,19 +109,6 @@ const inicializar = async () => {
       { $set: { integracion: "mercadopago" } }
     );
   }
-
-  const config = await ConfiguracionModel.findOne().lean();
-  if (!config?.cuentaCobroDefault) {
-    const mp = await CuentaDineroModel.findOne({ nombre: "Mercado Pago" }).lean();
-    const cuenta = mp || (await CuentaDineroModel.findOne({ activa: true }).sort({ orden: 1 }).lean());
-    if (cuenta) {
-      await ConfiguracionModel.findOneAndUpdate(
-        {},
-        { $set: { cuentaCobroDefault: cuenta._id } },
-        { upsert: true }
-      );
-    }
-  }
 };
 
 export const asegurarDatosIniciales = async () => {
@@ -212,50 +197,22 @@ const conSaldo = (cuenta, deltas) => ({
   saldo: redondear(Number(cuenta.saldoInicial || 0) + (deltas.get(String(cuenta._id)) || 0)),
 });
 
-const DIEZ_DIAS = 10 * 24 * 60 * 60 * 1000;
-
-const rangoFechas = (fecha) => ({
-  $gte: new Date(fecha.getTime() - DIEZ_DIAS),
-  $lte: new Date(fecha.getTime() + DIEZ_DIAS),
-});
-
-// Cobro importado de Mercado Pago, sin venta vinculada, por ese monto y cerca de esa fecha.
-const buscarCobroMPSinVenta = (cuentaId, monto, fecha) =>
-  MovimientoModel.findOne({
-    cuenta: cuentaId,
-    tipo: "ingreso",
-    "origen.tipo": "mercadopago",
-    "origen.mpTipo": "cobro",
-    "origen.venta": null,
-    monto: { $gte: monto - 0.5, $lte: monto + 0.5 },
-    fecha: rangoFechas(fecha),
-  })
-    .sort({ fecha: -1 })
-    .lean();
-
-// Cobro de una venta registrado en la cuenta de Mercado Pago que todavía no se
-// asoció a ninguna operación de MP (para no duplicarlo al importar).
-export const buscarCobroVentaSinMP = (cuentaId, monto, fecha) =>
-  MovimientoModel.findOne({
-    cuenta: cuentaId,
-    tipo: "ingreso",
-    "origen.tipo": "venta",
-    "origen.mpPaymentId": { $exists: false },
-    monto: { $gte: monto - 0.5, $lte: monto + 0.5 },
-    fecha: rangoFechas(fecha),
-  })
-    .sort({ fecha: 1 })
-    .lean();
+// Los movimientos de la cuenta conectada a Mercado Pago se importan solos:
+// cargarlos a mano los duplicaría (los ajustes de saldo sí se permiten).
+const rechazarSiEsMercadoPago = async (cuentaId) => {
+  if (await CuentaDineroModel.exists({ _id: cuentaId, integracion: "mercadopago" })) {
+    throw crearError("Los movimientos de Mercado Pago se importan solos: no se cargan a mano", 400);
+  }
+};
 
 class CajaService {
   // ---------- Cuentas ----------
   async listarCuentas({ incluirArchivadas = false } = {}) {
     await asegurarDatosIniciales();
     const filtro = incluirArchivadas ? {} : { activa: true };
-    const [cuentas, deltas, config] = await Promise.all([
+    const [cuentas, deltas] = await Promise.all([
       CuentaDineroModel.find(filtro).sort({ orden: 1, createdAt: 1 }).lean(),
       calcularMovimientosPorCuenta(),
-      ConfiguracionModel.findOne().lean(),
     ]);
     const aLiberar = await calcularALiberar();
     const conSaldos = cuentas.map((c) => ({
@@ -265,7 +222,6 @@ class CajaService {
     const activas = conSaldos.filter((c) => c.activa);
     return {
       cuentas: conSaldos,
-      cuentaCobroDefault: toId(config?.cuentaCobroDefault),
       totales: {
         total: redondear(activas.reduce((acc, c) => acc + c.saldo, 0)),
         efectivo: redondear(activas.filter((c) => !c.esDigital).reduce((acc, c) => acc + c.saldo, 0)),
@@ -310,24 +266,10 @@ class CajaService {
     if (data.orden !== undefined) update.orden = Number(data.orden) || 0;
     if (data.activa !== undefined) {
       update.activa = Boolean(data.activa);
-      if (!update.activa) {
-        const config = await ConfiguracionModel.findOne().lean();
-        if (toId(config?.cuentaCobroDefault) === String(id)) {
-          throw crearError("Es la cuenta de cobro por defecto: elegí otra antes de archivarla");
-        }
-      }
     }
     const cuenta = await CuentaDineroModel.findByIdAndUpdate(id, { $set: update }, { new: true }).lean();
     if (!cuenta) throw crearError("Cuenta no encontrada", 404);
     return cuenta;
-  }
-
-  async setCuentaCobroDefault(cuentaId) {
-    if (!esObjectId(cuentaId)) throw crearError("Cuenta inválida");
-    const cuenta = await CuentaDineroModel.findOne({ _id: cuentaId, activa: true }).lean();
-    if (!cuenta) throw crearError("Cuenta no encontrada", 404);
-    await ConfiguracionModel.findOneAndUpdate({}, { $set: { cuentaCobroDefault: cuenta._id } }, { upsert: true });
-    return { cuentaCobroDefault: String(cuenta._id) };
   }
 
   // Crea un ajuste para que el saldo calculado coincida con el real.
@@ -415,6 +357,7 @@ class CajaService {
     if (!esObjectId(cuentaId) || !(await CuentaDineroModel.exists({ _id: cuentaId }))) {
       throw crearError("Elegí una cuenta válida");
     }
+    await rechazarSiEsMercadoPago(cuentaId);
 
     let cuentaDestino = null;
     let categoria = null;
@@ -426,6 +369,7 @@ class CajaService {
       if (String(cuentaDestino) === String(cuentaId)) {
         throw crearError("La cuenta de origen y destino no pueden ser la misma");
       }
+      await rechazarSiEsMercadoPago(cuentaDestino);
     } else {
       categoria = data.categoria !== undefined ? data.categoria : toId(actual?.categoria);
       if (categoria) {
@@ -464,9 +408,6 @@ class CajaService {
     if (!esObjectId(id)) throw crearError("Movimiento inválido");
     const actual = await MovimientoModel.findById(id).lean();
     if (!actual) throw crearError("Movimiento no encontrado", 404);
-    if (actual.origen?.tipo === "venta" && actual.origen?.venta) {
-      throw crearError("Este movimiento viene de una venta: modificá el cobro desde la venta", 409);
-    }
     if (actual.origen?.tipo === "mercadopago" || actual.origen?.mpPaymentId) {
       // Lo importado de Mercado Pago es real: solo se le cambia categoría y descripción.
       const update = { updatedBy: userId };
@@ -495,9 +436,6 @@ class CajaService {
     if (!esObjectId(id)) throw crearError("Movimiento inválido");
     const actual = await MovimientoModel.findById(id).lean();
     if (!actual) throw crearError("Movimiento no encontrado", 404);
-    if (actual.origen?.tipo === "venta" && actual.origen?.venta) {
-      throw crearError("Este movimiento viene de una venta: modificá el cobro desde la venta", 409);
-    }
     await MovimientoModel.deleteOne({ _id: id });
     if (actual.origen?.mpPaymentId) {
       // Si se borra algo importado de Mercado Pago, no se vuelve a importar.
@@ -670,118 +608,6 @@ class CajaService {
       updatedBy: userId,
     });
     return this.obtenerMovimiento(mov._id);
-  }
-
-  // ---------- Cobros de ventas ----------
-  async getCuentaCobro(cuentaId) {
-    await asegurarDatosIniciales();
-    if (esObjectId(cuentaId)) {
-      const cuenta = await CuentaDineroModel.findOne({ _id: cuentaId, activa: true }).lean();
-      if (cuenta) return cuenta;
-    }
-    const config = await ConfiguracionModel.findOne().lean();
-    if (config?.cuentaCobroDefault) {
-      const cuenta = await CuentaDineroModel.findOne({ _id: config.cuentaCobroDefault, activa: true }).lean();
-      if (cuenta) return cuenta;
-    }
-    return CuentaDineroModel.findOne({ activa: true }).sort({ orden: 1 }).lean();
-  }
-
-  // Deja los ingresos de una venta iguales a lo cobrado (valorTotal − restan):
-  // si se cobró más, registra el ingreso; si se cobró menos (se desmarcó o se
-  // bajó la seña), quita/achica los ingresos automáticos más recientes.
-  async conciliarVenta(venta, { cuentaId = null, userId = null } = {}) {
-    if (!venta?._id) return null;
-    const ventaId = venta._id;
-    const cobrado = redondear(Math.max(0, Number(venta.valorTotal || 0) - Number(venta.restan || 0)));
-
-    const movs = await MovimientoModel.find({ "origen.venta": ventaId }).sort({ createdAt: -1 }).lean();
-    const registrado = redondear(
-      movs.reduce((acc, mv) => {
-        if (mv.tipo === "ingreso") return acc + mv.monto;
-        if (mv.tipo === "ajuste") return acc + (mv.direccion === "-" ? -mv.monto : mv.monto);
-        return acc;
-      }, 0)
-    );
-    const diferencia = redondear(cobrado - registrado);
-    if (Math.abs(diferencia) < 0.01) return null;
-
-    if (diferencia > 0) {
-      const cuenta = await this.getCuentaCobro(cuentaId);
-      if (!cuenta) {
-        logger.warn("No hay cuentas de Caja activas para registrar el cobro", { ventaId: String(ventaId) });
-        return null;
-      }
-      const categoria = await getCategoriaSistema("ventas");
-      const producto = venta.productoNombre || venta.producto?.nombre || "";
-      const descripcion = ["Cobro", venta.cliente, producto].filter(Boolean).join(" – ");
-
-      // Si el cobro entra en la cuenta conectada a Mercado Pago y ya se importó
-      // un cobro por el mismo monto (±10 días) sin venta, es el mismo: se vincula.
-      if (cuenta.integracion === "mercadopago") {
-        const importado = await buscarCobroMPSinVenta(cuenta._id, diferencia, new Date());
-        if (importado) {
-          await MovimientoModel.updateOne(
-            { _id: importado._id },
-            {
-              $set: {
-                "origen.venta": ventaId,
-                descripcion,
-                categoria: categoria?._id ?? importado.categoria,
-                updatedBy: userId,
-              },
-            }
-          );
-          return MovimientoModel.findById(importado._id).lean();
-        }
-      }
-
-      return MovimientoModel.create({
-        tipo: "ingreso",
-        monto: diferencia,
-        fecha: aFechaMovimiento(),
-        cuenta: cuenta._id,
-        categoria: categoria?._id ?? null,
-        descripcion,
-        origen: { tipo: "venta", venta: ventaId },
-        createdBy: userId,
-        updatedBy: userId,
-      });
-    }
-
-    let aDescontar = -diferencia;
-    for (const mv of movs.filter((x) => x.tipo === "ingreso")) {
-      if (aDescontar <= 0.009) break;
-      if (mv.origen?.mpPaymentId) {
-        // Es plata que entró de verdad en Mercado Pago: no se borra, solo se
-        // desvincula de la venta.
-        if (mv.monto <= aDescontar + 0.009) {
-          await MovimientoModel.updateOne({ _id: mv._id }, { $set: { "origen.venta": null } });
-          aDescontar = redondear(aDescontar - mv.monto);
-        }
-        continue;
-      }
-      if (mv.monto <= aDescontar + 0.009) {
-        await MovimientoModel.deleteOne({ _id: mv._id });
-        aDescontar = redondear(aDescontar - mv.monto);
-      } else {
-        await MovimientoModel.updateOne(
-          { _id: mv._id },
-          { $set: { monto: redondear(mv.monto - aDescontar), updatedBy: userId } }
-        );
-        aDescontar = 0;
-      }
-    }
-    return null;
-  }
-
-  // Al borrar una venta, la plata que entró sigue en la caja: solo se corta el vínculo.
-  async desvincularVenta(ventaId) {
-    if (!ventaId) return;
-    await MovimientoModel.updateMany(
-      { "origen.venta": ventaId },
-      { $set: { "origen.venta": null } }
-    );
   }
 }
 
