@@ -408,9 +408,6 @@ class CajaService {
     if (!esObjectId(id)) throw crearError("Movimiento inválido");
     const actual = await MovimientoModel.findById(id).lean();
     if (!actual) throw crearError("Movimiento no encontrado", 404);
-    if (actual.origen?.tipo === "venta" && actual.origen?.venta) {
-      throw crearError("Este movimiento viene de una venta: modificá el cobro desde la venta", 409);
-    }
     if (actual.origen?.tipo === "mercadopago" || actual.origen?.mpPaymentId) {
       // Lo importado de Mercado Pago es real: solo se le cambia categoría y descripción.
       const update = { updatedBy: userId };
@@ -439,9 +436,6 @@ class CajaService {
     if (!esObjectId(id)) throw crearError("Movimiento inválido");
     const actual = await MovimientoModel.findById(id).lean();
     if (!actual) throw crearError("Movimiento no encontrado", 404);
-    if (actual.origen?.tipo === "venta" && actual.origen?.venta) {
-      throw crearError("Este movimiento viene de una venta: modificá el cobro desde la venta", 409);
-    }
     await MovimientoModel.deleteOne({ _id: id });
     if (actual.origen?.mpPaymentId) {
       // Si se borra algo importado de Mercado Pago, no se vuelve a importar.
