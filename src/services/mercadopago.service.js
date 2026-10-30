@@ -8,6 +8,7 @@ import {
   aFechaMovimiento,
   asegurarDatosIniciales,
   buscarCobroVentaSinMP,
+  buscarEsperandoMP,
   getCategoriaSistema,
 } from "./caja.service.js";
 import logger from "../config/logger.js";
@@ -252,11 +253,14 @@ class MercadoPagoService {
 
           if (!(await existe(id, "cobro"))) {
             // ¿Ya se registró este cobro desde una venta (marcada pagada en MP)?
-            const deVenta = await buscarCobroVentaSinMP(cuenta._id, bruto, fecha);
-            if (deVenta) {
+            // ...o cargado a mano esperando a Mercado Pago?
+            const previo =
+              (await buscarCobroVentaSinMP(cuenta._id, bruto, fecha)) ||
+              (await buscarEsperandoMP(cuenta._id, "ingreso", bruto, fecha));
+            if (previo) {
               await MovimientoModel.updateOne(
-                { _id: deVenta._id },
-                { $set: { "origen.mpPaymentId": id, "origen.mpTipo": "cobro", liberacion } }
+                { _id: previo._id },
+                { $set: { "origen.mpPaymentId": id, "origen.mpTipo": "cobro", liberacion, esperaMP: false } }
               );
               resultado.vinculados += 1;
             } else if (await crear({
@@ -304,14 +308,24 @@ class MercadoPagoService {
         }
         const monto = redondear(p.transaction_details?.total_paid_amount ?? p.transaction_amount);
         if (!(await existe(id, "pago"))) {
-          if (await crear({
+          // ¿Ya se cargó a mano (por ejemplo, una compra de la lista pagada con MP)?
+          const previo = await buscarEsperandoMP(cuenta._id, "egreso", monto, fecha);
+          if (previo) {
+            await MovimientoModel.updateOne(
+              { _id: previo._id },
+              { $set: { "origen.mpPaymentId": id, "origen.mpTipo": "pago", esperaMP: false } }
+            );
+            resultado.vinculados += 1;
+          } else if (await crear({
             tipo: "egreso",
             monto,
             fecha,
             categoria: await categoriaPara(descripcion),
             descripcion,
             origen: { tipo: "mercadopago", mpPaymentId: id, mpTipo: "pago" },
-          })) resultado.nuevos += 1;
+          })) {
+            resultado.nuevos += 1;
+          }
         }
         if (devuelto && !(await existe(id, "devolucion"))) {
           if (await crear({
