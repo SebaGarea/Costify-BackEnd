@@ -55,7 +55,7 @@ const crearError = (message, status = 400) => {
 const CUENTAS_INICIALES = [
   { nombre: "Efectivo", tipo: "efectivo", esDigital: false, color: "green", orden: 0 },
   { nombre: "Mercado Pago", tipo: "billetera", esDigital: true, color: "blue", orden: 1 },
-  { nombre: "Naranja X", tipo: "billetera", esDigital: true, color: "orange", orden: 2 },
+  { nombre: "Cuenta secundaria", tipo: "billetera", esDigital: true, color: "orange", orden: 2 },
 ];
 
 const CATEGORIAS_INICIALES = [
@@ -96,6 +96,12 @@ const inicializar = async () => {
       );
       if (!existente) await CategoriaMovimientoModel.create(cat);
     }
+  }
+
+  // Naranja X se reemplazó por "Cuenta secundaria" (no tiene API pública).
+  // Se renombra conservando sus movimientos.
+  if (!(await CuentaDineroModel.exists({ nombre: "Cuenta secundaria" }))) {
+    await CuentaDineroModel.updateOne({ nombre: "Naranja X" }, { $set: { nombre: "Cuenta secundaria" } });
   }
 
   // La cuenta "Mercado Pago" queda conectada a la importación automática.
