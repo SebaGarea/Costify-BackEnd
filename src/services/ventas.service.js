@@ -283,7 +283,14 @@ class VentasService {
 
       if (señaActual > valorTotal) throw new Error('La seña no puede ser mayor al total');
       merged.valorTotal = valorTotal;
-      merged.restan = valorTotal - señaActual;
+      if (typeof data.restan === 'undefined') {
+        // Respetar lo ya cobrado aparte de la seña (por ejemplo, al marcarla
+        // pagada): editar la venta no la vuelve a dejar impaga. Si cambió el
+        // total, solo queda pendiente la diferencia.
+        const cobradoAntes = Math.max(0, Number(actual.valorTotal || 0) - Number(actual.restan || 0));
+        const pagadoAparteDeSeña = Math.max(0, cobradoAntes - Number(actual.seña || 0));
+        merged.restan = Math.max(0, valorTotal - señaActual - pagadoAparteDeSeña);
+      }
 
       if (priceInputsChanged) {
         merged.precioUnitarioSnapshot = snapshotPayload.precioUnitarioSnapshot;
