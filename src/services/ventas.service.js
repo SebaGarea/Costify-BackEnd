@@ -147,8 +147,8 @@ class VentasService {
     return await this.dao.getAll();
   }
 
-  async getAllVentasPaginated(page = 1, limit = 10) {
-    return await this.dao.getAllPaginated(page, limit);
+  async getAllVentasPaginated(page = 1, limit = 10, filtro = "todas") {
+    return await this.dao.getAllPaginated(page, limit, filtro);
   }
 
   async getVentaById(id) {

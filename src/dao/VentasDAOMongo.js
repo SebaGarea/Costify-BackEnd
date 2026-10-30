@@ -1,5 +1,17 @@
 import { VentasModel } from "./models/index.js";
 
+// Filtros de la página de ventas (por estado de la venta o saldo pendiente).
+export const FILTROS_VENTAS = {
+  todas: {},
+  sin_despachar: { estado: { $nin: ["despachada", "cancelada"] } },
+  pendiente: { estado: "pendiente" },
+  en_proceso: { estado: "en_proceso" },
+  finalizada: { estado: "finalizada" },
+  despachada: { estado: "despachada" },
+  cancelada: { estado: "cancelada" },
+  con_saldo: { restan: { $gt: 0 }, estado: { $ne: "cancelada" } },
+};
+
 export class VentasDAOMongo {
   static async create(data) {
     return await VentasModel.create(data);
@@ -15,8 +27,9 @@ export class VentasDAOMongo {
       .populate('updatedBy', 'first_name last_name email')
       .lean();
   }
-  static async getAllPaginated(page = 1, limit = 10) {
+  static async getAllPaginated(page = 1, limit = 10, filtro = "todas") {
     const skip = (page - 1) * limit;
+    const match = FILTROS_VENTAS[filtro] ?? {};
     const now = new Date();
     const dayMs = 24 * 60 * 60 * 1000;
     const ALERT_THRESHOLD_DAYS = 5;
@@ -26,7 +39,7 @@ export class VentasDAOMongo {
     const windowStartDate = new Date(now.getTime() - DESPACHADA_WINDOW_DAYS * dayMs);
 
     const [items, total, metricsAgg] = await Promise.all([
-      VentasModel.find()
+      VentasModel.find(match)
         .sort({ createdAt: -1, fecha: -1, _id: -1 })
         .skip(skip)
         .limit(limit)
@@ -34,10 +47,34 @@ export class VentasDAOMongo {
         .populate('createdBy', 'first_name last_name email')
         .populate('updatedBy', 'first_name last_name email')
         .lean(),
-      VentasModel.countDocuments({}),
+      VentasModel.countDocuments(match),
       VentasModel.aggregate([
         {
           $facet: {
+            // Cantidad de ventas de cada filtro (para mostrarla en los botones).
+            conteos: [
+              {
+                $group: {
+                  _id: null,
+                  todas: { $sum: 1 },
+                  sin_despachar: { $sum: { $cond: [{ $in: ["$estado", ["despachada", "cancelada"]] }, 0, 1] } },
+                  pendiente: { $sum: { $cond: [{ $eq: ["$estado", "pendiente"] }, 1, 0] } },
+                  en_proceso: { $sum: { $cond: [{ $eq: ["$estado", "en_proceso"] }, 1, 0] } },
+                  finalizada: { $sum: { $cond: [{ $eq: ["$estado", "finalizada"] }, 1, 0] } },
+                  despachada: { $sum: { $cond: [{ $eq: ["$estado", "despachada"] }, 1, 0] } },
+                  cancelada: { $sum: { $cond: [{ $eq: ["$estado", "cancelada"] }, 1, 0] } },
+                  con_saldo: {
+                    $sum: {
+                      $cond: [
+                        { $and: [{ $gt: ["$restan", 0] }, { $ne: ["$estado", "cancelada"] }] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
             pending: [
               { $match: { restan: { $gt: 0 } } },
               { $group: { _id: null, pendingAmountTotal: { $sum: "$restan" } } },
@@ -153,6 +190,7 @@ export class VentasDAOMongo {
     ]);
 
     const metrics = metricsAgg?.[0] ?? {};
+    const { _id: _ignorado, ...conteosFiltro } = metrics?.conteos?.[0] ?? {};
     const pendingAmountTotal = Number(metrics?.pending?.[0]?.pendingAmountTotal ?? 0);
     const statusMetricsGlobal = {
       en_proceso: 0,
@@ -172,6 +210,8 @@ export class VentasDAOMongo {
     return {
       items,
       total,
+      filtro: FILTROS_VENTAS[filtro] ? filtro : "todas",
+      conteosFiltro,
       page,
       limit,
       totalPages,
