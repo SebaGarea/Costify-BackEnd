@@ -46,9 +46,6 @@ export const cajaController = {
   ajustarSaldo: accion("ajustar saldo", (req) =>
     cajaService.ajustarSaldo(req.params.id, req.body?.saldoReal, userId(req))
   ),
-  setCuentaCobroDefault: accion("cuenta de cobro por defecto", (req) =>
-    cajaService.setCuentaCobroDefault(req.body?.cuentaId)
-  ),
 
   listarCategorias: accion("listar categorías", (req) =>
     cajaService.listarCategorias({ incluirArchivadas: incluirArchivadas(req) })

@@ -2,21 +2,6 @@ import { ProductoModel } from "../dao/models/ProductoSchema.js";
 import { PlantillaCostoModel } from "../dao/models/PlantillaCostoSchema.js";
 import { VentasDAOMongo } from "../dao/index.js";
 import { computePlanillaPricing } from "../utils/pricing.js";
-import { cajaService } from "./caja.service.js";
-import logger from "../config/logger.js";
-
-// Registra en Caja lo cobrado de la venta. Si falla, no se corta la operación
-// de la venta (la caja se puede corregir después).
-const registrarCobroEnCaja = async (venta, { cuentaId, userId }) => {
-  try {
-    await cajaService.conciliarVenta(venta, { cuentaId, userId });
-  } catch (error) {
-    logger.error("No se pudo registrar el cobro de la venta en Caja", {
-      ventaId: String(venta?._id ?? ""),
-      error,
-    });
-  }
-};
 
 const buildVentaSnapshotPayload = async ({ productoDoc, precioManual }) => {
   const snapshot = {
@@ -135,7 +120,6 @@ class VentasService {
       };
 
       const nuevaVenta = await this.dao.create(ventaLimpia);
-      await registrarCobroEnCaja(nuevaVenta, { cuentaId: data.cuentaCobro, userId });
       return nuevaVenta;
     } catch (error) {
       console.error("Error al crear la venta:", error);
@@ -321,7 +305,6 @@ class VentasService {
     }
 
     const updatedVenta = await this.dao.update(id, merged);
-    await registrarCobroEnCaja(updatedVenta, { cuentaId: data.cuentaCobro, userId });
     return updatedVenta;
   } catch (error) {
     throw new Error(`Error al actualizar la venta: ${error.message}`);
@@ -329,15 +312,7 @@ class VentasService {
 }
 
 async deleteVenta(id) {
-    const eliminada = await this.dao.delete(id);
-    if (eliminada) {
-      try {
-        await cajaService.desvincularVenta(id);
-      } catch (error) {
-        logger.error("No se pudieron desvincular los cobros de la venta en Caja", { error });
-      }
-    }
-    return eliminada;
+    return await this.dao.delete(id);
   }
 }
 export const ventasService = new VentasService(VentasDAOMongo);
