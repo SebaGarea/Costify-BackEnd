@@ -1,5 +1,5 @@
 import { cajaService } from "../services/caja.service.js";
-import { mercadoPagoService } from "../services/mercadopago.service.js";
+import { mercadoPagoService, verificarFirmaWebhook } from "../services/mercadopago.service.js";
 import logger from "../config/logger.js";
 
 // Envuelve cada acción: responde el resultado y delega los errores al errorHandler.
@@ -17,6 +17,23 @@ const accion = (nombre, fn, status = 200) => async (req, res, next) => {
 
 const userId = (req) => req.user?._id ?? null;
 const incluirArchivadas = (req) => req.query.archivadas === "true";
+
+// Webhook de Mercado Pago: es solo un aviso. Se verifica la firma y se dispara
+// la sincronización (que es la que importa y concilia). Se responde enseguida.
+export const mercadoPagoWebhook = (req, res) => {
+  const dataId = req.query["data.id"] ?? req.query?.data?.id ?? req.body?.data?.id ?? req.query.id;
+  const valida = verificarFirmaWebhook({
+    xSignature: req.get("x-signature"),
+    xRequestId: req.get("x-request-id"),
+    dataId,
+  });
+  if (!valida) {
+    logger.warn("Webhook de Mercado Pago con firma inválida", { ip: req.ip, dataId });
+    return res.sendStatus(401);
+  }
+  mercadoPagoService.solicitarSincronizacion();
+  return res.sendStatus(200);
+};
 
 export const cajaController = {
   listarCuentas: accion("listar cuentas", (req) =>

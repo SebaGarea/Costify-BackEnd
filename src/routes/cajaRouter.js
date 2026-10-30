@@ -1,6 +1,6 @@
 import { Router } from "express";
 import passport from "passport";
-import { cajaController } from "../controllers/index.js";
+import { cajaController, mercadoPagoWebhook } from "../controllers/index.js";
 import {
   validacionId,
   validacionMovimiento,
@@ -37,4 +37,6 @@ router.delete("/movimientos/:id", auth, validacionId, cajaController.eliminarMov
 router.post("/compras", auth, validacionCompra, cajaController.registrarCompra);
 
 router.get("/mercadopago", auth, cajaController.mercadoPagoEstado);
+// Sin login: lo llama Mercado Pago. Se valida con la firma (MP_WEBHOOK_SECRET).
+router.post("/mercadopago/webhook", mercadoPagoWebhook);
 router.post("/mercadopago/sync", auth, cajaController.mercadoPagoSync);

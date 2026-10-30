@@ -11,6 +11,7 @@ import {
   buscarEsperandoMP,
   getCategoriaSistema,
 } from "./caja.service.js";
+import { createHmac, timingSafeEqual } from "crypto";
 import logger from "../config/logger.js";
 
 // Importa a la Caja los movimientos de la cuenta de Mercado Pago del negocio.
@@ -30,6 +31,36 @@ const POR_PAGINA = 100;
 const MAX_PAGINAS = 50;
 
 const token = () => (process.env.MP_ACCESS_TOKEN || "").trim();
+const webhookSecret = () => (process.env.MP_WEBHOOK_SECRET || "").trim();
+
+// Espera antes de sincronizar tras un webhook: la búsqueda de pagos de MP puede
+// tardar unos segundos en mostrar la operación recién avisada.
+const DEMORA_WEBHOOK_MS = 3000;
+
+// Verifica la firma de un webhook de Mercado Pago (header x-signature).
+// Manifest: "id:<data.id>;request-id:<x-request-id>;ts:<ts>;" firmado con HMAC-SHA256.
+// Si falta algún valor, esa parte se omite (así lo indica la documentación de MP).
+export const verificarFirmaWebhook = ({ xSignature, xRequestId, dataId }) => {
+  const secret = webhookSecret();
+  if (!secret || !xSignature) return false;
+  const partes = Object.fromEntries(
+    String(xSignature)
+      .split(",")
+      .map((p) => p.split("=").map((x) => x.trim()))
+      .filter(([k, v]) => k && v)
+  );
+  if (!partes.ts || !partes.v1) return false;
+  const id = dataId ? String(dataId) : "";
+  const idManifest = /^[a-z0-9]+$/i.test(id) ? id.toLowerCase() : id;
+  let manifest = "";
+  if (idManifest) manifest += `id:${idManifest};`;
+  if (xRequestId) manifest += `request-id:${xRequestId};`;
+  manifest += `ts:${partes.ts};`;
+  const esperado = createHmac("sha256", secret).update(manifest).digest("hex");
+  const a = Buffer.from(esperado, "hex");
+  const b = Buffer.from(String(partes.v1), "hex");
+  return a.length === b.length && timingSafeEqual(a, b);
+};
 export const mercadoPagoHabilitado = () => Boolean(token());
 
 const redondear = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -80,6 +111,8 @@ class MercadoPagoService {
   constructor() {
     this.enCurso = null;
     this.timer = null;
+    this.programada = null;
+    this.repetir = false;
   }
 
   async estado() {
@@ -95,6 +128,28 @@ class MercadoPagoService {
       ultimoError: estado.ultimoError,
       importados: estado.importados,
     };
+  }
+
+  // Aviso de un webhook: sincroniza en unos segundos. Si ya hay una
+  // sincronización en curso, se repite al terminar (para no perder el aviso).
+  solicitarSincronizacion() {
+    if (!mercadoPagoHabilitado()) return;
+    if (this.enCurso) {
+      this.repetir = true;
+      return;
+    }
+    if (this.programada) return;
+    this.programada = setTimeout(() => {
+      this.programada = null;
+      this.sincronizar()
+        .catch(() => {})
+        .finally(() => {
+          if (this.repetir) {
+            this.repetir = false;
+            this.solicitarSincronizacion();
+          }
+        });
+    }, DEMORA_WEBHOOK_MS);
   }
 
   // Evita dos sincronizaciones a la vez (botón + intervalo).
