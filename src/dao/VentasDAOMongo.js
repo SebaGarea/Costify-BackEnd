@@ -4,7 +4,8 @@ import { VentasModel } from "./models/index.js";
 export const FILTROS_VENTAS = {
   todas: {},
   sin_despachar: { estado: { $nin: ["despachada", "cancelada"] } },
-  pendiente: { estado: "pendiente" },
+  // Pendientes: las que todavía no tienen ningún estado (incluye ventas viejas sin el campo).
+  pendiente: { estado: { $in: ["pendiente", "", null] } },
   en_proceso: { estado: "en_proceso" },
   finalizada: { estado: "finalizada" },
   despachada: { estado: "despachada" },
@@ -58,7 +59,7 @@ export class VentasDAOMongo {
                   _id: null,
                   todas: { $sum: 1 },
                   sin_despachar: { $sum: { $cond: [{ $in: ["$estado", ["despachada", "cancelada"]] }, 0, 1] } },
-                  pendiente: { $sum: { $cond: [{ $eq: ["$estado", "pendiente"] }, 1, 0] } },
+                  pendiente: { $sum: { $cond: [{ $in: [{ $ifNull: ["$estado", "pendiente"] }, ["pendiente", ""]] }, 1, 0] } },
                   en_proceso: { $sum: { $cond: [{ $eq: ["$estado", "en_proceso"] }, 1, 0] } },
                   finalizada: { $sum: { $cond: [{ $eq: ["$estado", "finalizada"] }, 1, 0] } },
                   despachada: { $sum: { $cond: [{ $eq: ["$estado", "despachada"] }, 1, 0] } },
