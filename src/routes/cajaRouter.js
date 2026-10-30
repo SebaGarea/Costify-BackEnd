@@ -35,3 +35,6 @@ router.put("/movimientos/:id", auth, validacionId, validacionMovimiento, cajaCon
 router.delete("/movimientos/:id", auth, validacionId, cajaController.eliminarMovimiento);
 
 router.post("/compras", auth, validacionCompra, cajaController.registrarCompra);
+
+router.get("/mercadopago", auth, cajaController.mercadoPagoEstado);
+router.post("/mercadopago/sync", auth, cajaController.mercadoPagoSync);

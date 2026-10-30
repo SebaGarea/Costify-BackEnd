@@ -1,4 +1,5 @@
 import { cajaService } from "../services/caja.service.js";
+import { mercadoPagoService } from "../services/mercadopago.service.js";
 import logger from "../config/logger.js";
 
 // Envuelve cada acción: responde el resultado y delega los errores al errorHandler.
@@ -55,6 +56,9 @@ export const cajaController = {
   eliminarMovimiento: accion("eliminar movimiento", (req) =>
     cajaService.eliminarMovimiento(req.params.id)
   ),
+
+  mercadoPagoEstado: accion("estado de Mercado Pago", () => mercadoPagoService.estado()),
+  mercadoPagoSync: accion("sincronizar Mercado Pago", () => mercadoPagoService.sincronizar()),
 
   resumen: accion("resumen", (req) => cajaService.resumen(req.query)),
   registrarCompra: accion(

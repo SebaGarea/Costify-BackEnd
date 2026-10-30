@@ -23,6 +23,7 @@ import {
 
 import { errorHandler } from "./middlewares/error.handler.js";
 import logger from "./config/logger.js";
+import { mercadoPagoService } from "./services/mercadopago.service.js";
 
 const app = express();
 
@@ -71,6 +72,9 @@ export const startServer = async () => {
     const server = app.listen(config.PORT, () => {
       logger.info(`Server escuchando en puerto ${config.PORT}`);
     });
+
+    // Importa los movimientos de Mercado Pago a la Caja (solo si hay token).
+    mercadoPagoService.iniciarSincronizacionPeriodica();
 
     return server;
   } catch (err) {
