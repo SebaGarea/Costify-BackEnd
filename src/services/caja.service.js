@@ -227,6 +227,26 @@ const buscarCobroMPSinVenta = (cuentaId, monto, fecha) =>
     .sort({ fecha: -1 })
     .lean();
 
+const TRES_DIAS = 3 * 24 * 60 * 60 * 1000;
+
+// Movimiento cargado a mano en la cuenta de Mercado Pago (gasto, compra de la
+// lista, ingreso) que espera la operación importada por el mismo monto.
+export const buscarEsperandoMP = (cuentaId, tipo, monto, fecha) =>
+  MovimientoModel.findOne({
+    cuenta: cuentaId,
+    tipo,
+    esperaMP: true,
+    "origen.mpPaymentId": { $exists: false },
+    monto: { $gte: monto - 0.5, $lte: monto + 0.5 },
+    fecha: { $gte: new Date(fecha.getTime() - TRES_DIAS), $lte: new Date(fecha.getTime() + TRES_DIAS) },
+  })
+    .sort({ fecha: 1, createdAt: 1 })
+    .lean();
+
+const esperaMPPara = async (cuentaId, tipo) =>
+  ["ingreso", "egreso"].includes(tipo) &&
+  Boolean(await CuentaDineroModel.exists({ _id: cuentaId, integracion: "mercadopago" }));
+
 // Cobro de una venta registrado en la cuenta de Mercado Pago que todavía no se
 // asoció a ninguna operación de MP (para no duplicarlo al importar).
 export const buscarCobroVentaSinMP = (cuentaId, monto, fecha) =>
@@ -447,6 +467,7 @@ class CajaService {
     const campos = await this.validarMovimiento(data);
     const mov = await MovimientoModel.create({
       ...campos,
+      esperaMP: await esperaMPPara(campos.cuenta, campos.tipo),
       origen: { tipo: "manual" },
       createdBy: userId,
       updatedBy: userId,
@@ -481,6 +502,7 @@ class CajaService {
       throw crearError("Los ajustes de saldo no se editan: borralo y volvé a ajustar", 409);
     }
     const campos = await this.validarMovimiento(data, actual);
+    campos.esperaMP = await esperaMPPara(campos.cuenta, campos.tipo);
     await MovimientoModel.updateOne({ _id: id }, { $set: { ...campos, updatedBy: userId } });
     return this.obtenerMovimiento(id);
   }
@@ -654,6 +676,7 @@ class CajaService {
       descripcion:
         String(descripcion || "").trim() ||
         `Compra de materiales${resumenItems ? `: ${resumenItems}${detalle.length > 5 ? "…" : ""}` : ""}`,
+      esperaMP: await esperaMPPara(cuenta, "egreso"),
       origen: { tipo: "compra", detalleCompra: detalle },
       createdBy: userId,
       updatedBy: userId,
