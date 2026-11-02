@@ -279,6 +279,7 @@ export const toolDeclarations = [
         cuenta: { type: "STRING", description: "Cuenta: Efectivo, Mercado Pago, Cuenta secundaria, etc. (opcional; default Efectivo)." },
         descripcion: { type: "STRING", description: "Detalle breve del movimiento." },
         fecha: { type: "STRING", description: "Fecha YYYY-MM-DD (opcional, default hoy)." },
+        socio: { type: "STRING", description: "Solo para retiros de socios (categoría Retiros de socios): quién retiró la plata, ej: Marcos o Sebi." },
       },
       required: ["tipo", "monto"],
     },
@@ -565,7 +566,7 @@ const cuentaPorNombre = async (texto) => {
   return encontrada ? String(encontrada._id) : null;
 };
 
-const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion, fecha } = {}, ctx = {}) => {
+const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion, fecha, socio } = {}, ctx = {}) => {
   const tipoMov = tipo === "ingreso" ? "ingreso" : "egreso";
   const m = Number(monto);
   if (!Number.isFinite(m) || m <= 0) return { error: "El monto debe ser mayor a cero" };
@@ -594,6 +595,8 @@ const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion
       delTipo.find((c) => normalizar(c.nombre).includes(buscada) || buscada.includes(normalizar(c.nombre))) ||
       null;
   }
+  // Si nombra a un socio, es un retiro de socio.
+  if (socio && tipoMov === "egreso") cat = delTipo.find((c) => c.clave === "retiros") || cat;
   if (!cat) {
     const porDefecto = tipoMov === "egreso" ? "otros gastos" : "otros ingresos";
     cat = delTipo.find((c) => normalizar(c.nombre) === porDefecto) || null;
@@ -608,6 +611,7 @@ const registrarMovimiento = async ({ tipo, monto, categoria, cuenta, descripcion
         categoria: cat ? String(cat._id) : null,
         descripcion: descripcion || "",
         fecha: fecha ? String(fecha).slice(0, 10) : undefined,
+        socio: socio || undefined,
       },
       ctx.userId
     );

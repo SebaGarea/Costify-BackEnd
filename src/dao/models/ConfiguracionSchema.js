@@ -23,6 +23,8 @@ const ConfiguracionSchema = new Schema(
     perfilNegocio: { type: String, default: "", trim: true, maxlength: 2000 },
     // Cuenta de Caja donde entran por defecto los cobros de ventas.
     cuentaCobroDefault: { type: Schema.Types.ObjectId, ref: "CuentaDinero", default: null },
+    // Socios que retiran plata del negocio (Caja → Retiros de socios).
+    sociosCaja: { type: [String], default: () => ["Marcos", "Sebi"] },
   },
   { timestamps: true }
 );

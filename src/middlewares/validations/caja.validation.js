@@ -32,6 +32,13 @@ export const validacionMovimiento = [
     .withMessage("Categoría inválida"),
   fecha("fecha"),
   body("descripcion").optional().isString().isLength({ max: 500 }).withMessage("Descripción demasiado larga"),
+  body("socio").optional({ nullable: true }).isString().isLength({ max: 40 }).withMessage("Socio inválido"),
+  handleValidation,
+];
+
+export const validacionSocios = [
+  body("socios").isArray({ min: 1, max: 10 }).withMessage("Tiene que haber entre 1 y 10 socios"),
+  body("socios.*").isString().trim().isLength({ min: 1, max: 40 }).withMessage("Nombre de socio inválido"),
   handleValidation,
 ];
 
@@ -40,6 +47,7 @@ export const validacionQueryMovimientos = [
   fecha("hasta", query),
   query("cuenta").optional({ checkFalsy: true }).isMongoId().withMessage("Cuenta inválida"),
   query("categoria").optional({ checkFalsy: true }).isMongoId().withMessage("Categoría inválida"),
+  query("socio").optional({ checkFalsy: true }).isString().isLength({ max: 40 }).withMessage("Socio inválido"),
   query("page").optional().isInt({ min: 1 }).withMessage("page inválido"),
   query("limit").optional().isInt({ min: 1, max: 500 }).withMessage("limit inválido"),
   handleValidation,

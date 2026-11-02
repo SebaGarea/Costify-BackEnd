@@ -5,6 +5,7 @@ import {
   MovimientoModel,
   IntegracionMercadoPagoModel,
 } from "../dao/models/index.js";
+import { ConfiguracionModel } from "../dao/models/ConfiguracionSchema.js";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -68,7 +69,7 @@ const CATEGORIAS_INICIALES = [
   { nombre: "Mano de obra", tipo: "egreso", color: "red" },
   { nombre: "Impuestos", tipo: "egreso", color: "gray" },
   { nombre: "Comisiones", tipo: "egreso", color: "teal", sistema: true, clave: "comisiones" },
-  { nombre: "Retiros personales", tipo: "egreso", color: "purple" },
+  { nombre: "Retiros de socios", tipo: "egreso", color: "purple", sistema: true, clave: "retiros" },
   { nombre: "Otros gastos", tipo: "egreso", color: "gray", sistema: true, clave: "otros_gastos" },
 ];
 
@@ -84,6 +85,13 @@ const inicializar = async () => {
   if ((await CategoriaMovimientoModel.estimatedDocumentCount()) === 0) {
     await CategoriaMovimientoModel.insertMany(CATEGORIAS_INICIALES);
   } else {
+    // "Retiros personales" pasó a ser "Retiros de socios" (con el socio en cada movimiento).
+    if (!(await CategoriaMovimientoModel.exists({ clave: "retiros" }))) {
+      await CategoriaMovimientoModel.updateOne(
+        { tipo: "egreso", clave: null, nombre: { $regex: /^retiros personales$/i } },
+        { $set: { nombre: "Retiros de socios", clave: "retiros", sistema: true, activa: true } }
+      );
+    }
     // Las de sistema tienen que existir siempre (las usan los cobros, las compras
     // y la importación de Mercado Pago). Si ya hay una con el mismo nombre, se reutiliza.
     for (const cat of CATEGORIAS_INICIALES.filter((c) => c.sistema)) {
@@ -367,6 +375,7 @@ class CajaService {
 
     let cuentaDestino = null;
     let categoria = null;
+    let socio = null;
     if (tipo === "transferencia") {
       cuentaDestino = data.cuentaDestino ?? toId(actual?.cuentaDestino);
       if (!esObjectId(cuentaDestino) || !(await CuentaDineroModel.exists({ _id: cuentaDestino }))) {
@@ -382,6 +391,7 @@ class CajaService {
         const cat = esObjectId(categoria) ? await CategoriaMovimientoModel.findById(categoria).lean() : null;
         if (!cat) throw crearError("Categoría inválida");
         if (cat.tipo !== tipo) throw crearError(`La categoría "${cat.nombre}" no es de ${tipo}s`);
+        socio = await this.validarSocio(cat, data.socio !== undefined ? data.socio : actual?.socio);
       } else {
         categoria = null;
       }
@@ -395,7 +405,33 @@ class CajaService {
       categoria,
       fecha: data.fecha !== undefined ? aFechaMovimiento(data.fecha) : actual?.fecha ?? aFechaMovimiento(),
       descripcion: String(data.descripcion ?? actual?.descripcion ?? "").trim(),
+      socio,
     };
+  }
+
+  // ---------- Socios ----------
+  async listarSocios() {
+    const config = await ConfiguracionModel.findOne().lean();
+    const socios = config?.sociosCaja;
+    return Array.isArray(socios) && socios.length ? socios : ["Marcos", "Sebi"];
+  }
+
+  async actualizarSocios(lista = []) {
+    const socios = [...new Set((Array.isArray(lista) ? lista : []).map((s) => String(s || "").trim()).filter(Boolean))];
+    if (!socios.length) throw crearError("Tiene que haber al menos un socio");
+    await ConfiguracionModel.findOneAndUpdate({}, { $set: { sociosCaja: socios } }, { upsert: true });
+    return socios;
+  }
+
+  // Los retiros de socios llevan quién retiró; el resto de los movimientos, no.
+  async validarSocio(categoria, socio) {
+    if (categoria?.clave !== "retiros") return null;
+    const nombre = String(socio || "").trim();
+    if (!nombre) throw crearError("Elegí qué socio retiró la plata");
+    const socios = await this.listarSocios();
+    const valido = socios.find((s) => s.toLowerCase() === nombre.toLowerCase());
+    if (!valido) throw crearError(`Socio inválido. Socios: ${socios.join(", ")}`);
+    return valido;
   }
 
   async crearMovimiento(data = {}, userId = null) {
@@ -423,9 +459,14 @@ class CajaService {
           const cat = esObjectId(data.categoria) ? await CategoriaMovimientoModel.findById(data.categoria).lean() : null;
           if (!cat || cat.tipo !== actual.tipo) throw crearError("Categoría inválida para este movimiento");
           update.categoria = cat._id;
+          update.socio = await this.validarSocio(cat, data.socio !== undefined ? data.socio : actual.socio);
         } else {
           update.categoria = null;
+          update.socio = null;
         }
+      } else if (data.socio !== undefined && actual.categoria) {
+        const cat = await CategoriaMovimientoModel.findById(actual.categoria).lean();
+        update.socio = await this.validarSocio(cat, data.socio);
       }
       await MovimientoModel.updateOne({ _id: id }, { $set: update });
       return this.obtenerMovimiento(id);
@@ -466,7 +507,7 @@ class CajaService {
     return this.poblar(MovimientoModel.findById(id)).lean();
   }
 
-  construirFiltro({ desde, hasta, cuenta, categoria, tipo, q } = {}) {
+  construirFiltro({ desde, hasta, cuenta, categoria, tipo, q, socio } = {}) {
     const filtro = {};
     if (esFechaISO(desde) || esFechaISO(hasta)) {
       filtro.fecha = {};
@@ -479,6 +520,7 @@ class CajaService {
     }
     if (esObjectId(categoria)) filtro.categoria = new mongoose.Types.ObjectId(String(categoria));
     if (["ingreso", "egreso", "transferencia", "ajuste"].includes(tipo)) filtro.tipo = tipo;
+    if (socio && String(socio).trim()) filtro.socio = String(socio).trim();
     if (q && String(q).trim()) {
       const rx = new RegExp(String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       filtro.descripcion = rx;
@@ -513,7 +555,7 @@ class CajaService {
     const [y, m] = hoy.split("-").map(Number);
     const inicioFlujo = new Date(Date.UTC(y, m - 6, 1));
 
-    const [cuentas, porTipo, porCategoria, flujo] = await Promise.all([
+    const [cuentas, porTipo, porCategoria, flujo, socios, porSocio] = await Promise.all([
       this.listarCuentas(),
       MovimientoModel.aggregate([
         { $match: { ...filtroPeriodo, tipo: { $in: ["ingreso", "egreso"] } } },
@@ -540,6 +582,11 @@ class CajaService {
             total: { $sum: "$monto" },
           },
         },
+      ]),
+      this.listarSocios(),
+      MovimientoModel.aggregate([
+        { $match: { ...filtroPeriodo, tipo: "egreso", socio: { $nin: [null, ""] } } },
+        { $group: { _id: "$socio", total: { $sum: "$monto" }, cantidad: { $sum: 1 } } },
       ]),
     ]);
 
@@ -573,6 +620,11 @@ class CajaService {
       ingresosPorCategoria: categorias.filter((c) => c.tipo === "ingreso"),
       egresosPorCategoria: categorias.filter((c) => c.tipo === "egreso"),
       flujoMensual: meses,
+      // Todos los socios aparecen, aunque no hayan retirado nada en el período.
+      retirosPorSocio: [...new Set([...socios, ...porSocio.map((f) => f._id)])].map((nombre) => {
+        const fila = porSocio.find((f) => f._id === nombre);
+        return { socio: nombre, total: redondear(fila?.total || 0), cantidad: fila?.cantidad || 0 };
+      }),
     };
   }
 
