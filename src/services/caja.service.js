@@ -215,17 +215,22 @@ class CajaService {
       calcularMovimientosPorCuenta(),
     ]);
     const aLiberar = await calcularALiberar();
-    const conSaldos = cuentas.map((c) => ({
-      ...conSaldo(c, deltas),
-      aLiberar: redondear(aLiberar.get(String(c._id)) || 0),
-    }));
+    // saldo = todo lo que hay (incluye lo retenido); disponible = lo que ya se puede usar.
+    const conSaldos = cuentas.map((c) => {
+      const cuenta = conSaldo(c, deltas);
+      const retenido = Math.max(0, redondear(aLiberar.get(String(c._id)) || 0));
+      return { ...cuenta, aLiberar: retenido, disponible: redondear(cuenta.saldo - retenido) };
+    });
     const activas = conSaldos.filter((c) => c.activa);
+    const sumar = (lista, campo) => redondear(lista.reduce((acc, c) => acc + c[campo], 0));
     return {
       cuentas: conSaldos,
       totales: {
-        total: redondear(activas.reduce((acc, c) => acc + c.saldo, 0)),
-        efectivo: redondear(activas.filter((c) => !c.esDigital).reduce((acc, c) => acc + c.saldo, 0)),
-        digital: redondear(activas.filter((c) => c.esDigital).reduce((acc, c) => acc + c.saldo, 0)),
+        total: sumar(activas, "saldo"),
+        aLiberar: sumar(activas, "aLiberar"),
+        disponible: sumar(activas, "disponible"),
+        efectivo: sumar(activas.filter((c) => !c.esDigital), "disponible"),
+        digital: sumar(activas.filter((c) => c.esDigital), "disponible"),
       },
     };
   }
@@ -280,7 +285,8 @@ class CajaService {
     const { cuentas } = await this.listarCuentas({ incluirArchivadas: true });
     const cuenta = cuentas.find((c) => String(c._id) === String(id));
     if (!cuenta) throw crearError("Cuenta no encontrada", 404);
-    const diferencia = redondear(real - cuenta.saldo);
+    // Se compara con lo disponible: lo retenido se libera solo y no se ajusta.
+    const diferencia = redondear(real - cuenta.disponible);
     if (Math.abs(diferencia) < 0.01) return { ajuste: null, saldo: cuenta.saldo };
     const ajuste = await MovimientoModel.create({
       tipo: "ajuste",

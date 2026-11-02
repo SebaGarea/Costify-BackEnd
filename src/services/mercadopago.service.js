@@ -304,6 +304,12 @@ class MercadoPagoService {
           const comision = redondear(bruto - neto);
           const liberacion = fechaLiberacion(p);
 
+          // Mercado Pago puede liberar antes o mover la fecha: se actualiza en lo ya importado.
+          await MovimientoModel.updateMany(
+            { "origen.mpPaymentId": id, "origen.mpTipo": { $in: ["cobro", "comision"] }, liberacion: { $ne: liberacion } },
+            { $set: { liberacion } }
+          );
+
           if (!(await existe(id, "cobro"))) {
             if (await crear({
               tipo: "ingreso",

@@ -627,8 +627,9 @@ const consultarCaja = async ({ desde, hasta } = {}) => {
   const r = await cajaService.resumen({ desde, hasta });
   return {
     periodo: r.periodo,
-    saldos: r.cuentas.map((c) => ({ cuenta: c.nombre, saldo: c.saldo, digital: c.esDigital })),
-    totalDisponible: r.totales.total,
+    saldos: r.cuentas.map((c) => ({ cuenta: c.nombre, disponible: c.disponible, aLiberar: c.aLiberar, digital: c.esDigital })),
+    totalDisponible: r.totales.disponible,
+    totalALiberar: r.totales.aLiberar,
     ingresos: r.ingresos,
     egresos: r.egresos,
     resultado: r.resultado,
