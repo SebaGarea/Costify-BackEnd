@@ -10,6 +10,7 @@ import {
   validacionAjuste,
   validacionCategoria,
   validacionCompra,
+  validacionSocios,
 } from "../middlewares/validations/caja.validation.js";
 
 export const router = Router();
@@ -27,6 +28,9 @@ router.get("/categorias", auth, cajaController.listarCategorias);
 router.post("/categorias", auth, validacionCategoria, cajaController.crearCategoria);
 router.put("/categorias/:id", auth, validacionId, validacionCategoria, cajaController.actualizarCategoria);
 router.delete("/categorias/:id", auth, validacionId, cajaController.eliminarCategoria);
+
+router.get("/socios", auth, cajaController.listarSocios);
+router.put("/socios", auth, validacionSocios, cajaController.actualizarSocios);
 
 router.get("/movimientos", auth, validacionQueryMovimientos, cajaController.listarMovimientos);
 router.post("/movimientos", auth, validacionMovimiento, cajaController.crearMovimiento);

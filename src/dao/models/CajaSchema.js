@@ -62,6 +62,8 @@ const MovimientoSchema = new Schema(
     },
     // Fecha en que Mercado Pago libera la plata (si todavía no está disponible).
     liberacion: { type: Date, default: null },
+    // Solo en retiros de socios: quién retiró la plata.
+    socio: { type: String, default: null, trim: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
     updatedBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
   },
@@ -73,6 +75,7 @@ MovimientoSchema.index({ cuenta: 1 });
 MovimientoSchema.index({ cuentaDestino: 1 });
 MovimientoSchema.index({ categoria: 1 });
 MovimientoSchema.index({ "origen.venta": 1 });
+MovimientoSchema.index({ socio: 1, fecha: -1 });
 MovimientoSchema.index(
   { "origen.mpPaymentId": 1, "origen.mpTipo": 1 },
   { unique: true, partialFilterExpression: { "origen.mpPaymentId": { $type: "string" } } }

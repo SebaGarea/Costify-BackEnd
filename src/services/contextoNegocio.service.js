@@ -74,8 +74,10 @@ export const buildBusinessContext = async () => {
 
     const caja = await safe(cajaService.resumen(), null);
     if (caja) {
-      const saldos = caja.cuentas.map((c) => `${c.nombre} ${fmtMoneda(c.saldo)}`).join(", ");
-      lines.push(`- Caja (saldos): ${saldos} — total ${fmtMoneda(caja.totales.total)}`);
+      const saldos = caja.cuentas
+        .map((c) => `${c.nombre} ${fmtMoneda(c.disponible)}${c.aLiberar > 0 ? ` (+${fmtMoneda(c.aLiberar)} a liberar)` : ""}`)
+        .join(", ");
+      lines.push(`- Caja (disponible): ${saldos} — total disponible ${fmtMoneda(caja.totales.disponible)}`);
       lines.push(
         `- Caja este mes: ingresos ${fmtMoneda(caja.ingresos)}, egresos ${fmtMoneda(caja.egresos)}`
       );

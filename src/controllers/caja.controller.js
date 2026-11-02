@@ -58,6 +58,9 @@ export const cajaController = {
     cajaService.eliminarCategoria(req.params.id)
   ),
 
+  listarSocios: accion("listar socios", () => cajaService.listarSocios()),
+  actualizarSocios: accion("actualizar socios", (req) => cajaService.actualizarSocios(req.body?.socios)),
+
   listarMovimientos: accion("listar movimientos", (req) => cajaService.listarMovimientos(req.query)),
   crearMovimiento: accion(
     "crear movimiento",
