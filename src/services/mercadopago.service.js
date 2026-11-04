@@ -8,6 +8,7 @@ import {
   aFechaMovimiento,
   asegurarDatosIniciales,
   getCategoriaSistema,
+  MP_SINCRONIZACION_ACTIVA,
 } from "./caja.service.js";
 import { createHmac, timingSafeEqual } from "crypto";
 import logger from "../config/logger.js";
@@ -59,7 +60,7 @@ export const verificarFirmaWebhook = ({ xSignature, xRequestId, dataId }) => {
   const b = Buffer.from(String(partes.v1), "hex");
   return a.length === b.length && timingSafeEqual(a, b);
 };
-export const mercadoPagoHabilitado = () => Boolean(token());
+export const mercadoPagoHabilitado = () => MP_SINCRONIZACION_ACTIVA && Boolean(token());
 
 const redondear = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
