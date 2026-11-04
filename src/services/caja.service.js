@@ -9,6 +9,11 @@ import { ConfiguracionModel } from "../dao/models/ConfiguracionSchema.js";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
+// Sincronización automática con Mercado Pago. Mientras esté en false, la cuenta
+// Mercado Pago es manual como las demás: el saldo se carga con "Ajustar saldo" y
+// los gastos, compras e ingresos se registran a mano. Para reactivarla, pasar a true.
+export const MP_SINCRONIZACION_ACTIVA = false;
+
 // ---------- Fechas ----------
 // Igual que el resto de la app: las fechas "de día" se guardan al mediodía UTC
 // para que nunca caigan en el día anterior/siguiente por la zona horaria.
@@ -208,6 +213,7 @@ const conSaldo = (cuenta, deltas) => ({
 // Los movimientos de la cuenta conectada a Mercado Pago se importan solos:
 // cargarlos a mano los duplicaría (los ajustes de saldo sí se permiten).
 const rechazarSiEsMercadoPago = async (cuentaId) => {
+  if (!MP_SINCRONIZACION_ACTIVA) return;
   if (await CuentaDineroModel.exists({ _id: cuentaId, integracion: "mercadopago" })) {
     throw crearError("Los movimientos de Mercado Pago se importan solos: no se cargan a mano", 400);
   }
@@ -225,7 +231,8 @@ class CajaService {
     const aLiberar = await calcularALiberar();
     // saldo = todo lo que hay (incluye lo retenido); disponible = lo que ya se puede usar.
     const conSaldos = cuentas.map((c) => {
-      const cuenta = conSaldo(c, deltas);
+      // Con la sincronización pausada, ninguna cuenta se presenta como "se importa sola".
+      const cuenta = conSaldo(MP_SINCRONIZACION_ACTIVA ? c : { ...c, integracion: null }, deltas);
       const retenido = Math.max(0, redondear(aLiberar.get(String(c._id)) || 0));
       return { ...cuenta, aLiberar: retenido, disponible: redondear(cuenta.saldo - retenido) };
     });
@@ -635,7 +642,7 @@ class CajaService {
     if (!esObjectId(cuenta) || !(await CuentaDineroModel.exists({ _id: cuenta }))) {
       throw crearError("Elegí con qué cuenta se pagó");
     }
-    if (await CuentaDineroModel.exists({ _id: cuenta, integracion: "mercadopago" })) {
+    if (MP_SINCRONIZACION_ACTIVA && (await CuentaDineroModel.exists({ _id: cuenta, integracion: "mercadopago" }))) {
       // Lo pagado con Mercado Pago entra solo (webhook/sincronización): cargarlo
       // a mano lo duplicaría.
       throw crearError("Los pagos con Mercado Pago se registran solos al sincronizar");
