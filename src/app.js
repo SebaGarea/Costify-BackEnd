@@ -24,8 +24,14 @@ import {
 import { errorHandler } from "./middlewares/error.handler.js";
 import logger from "./config/logger.js";
 import { mercadoPagoService } from "./services/mercadopago.service.js";
+import { avisarSiSecretoDebil } from "./services/authTokens.service.js";
 
 const app = express();
+
+// La API está detrás de Caddy: la IP real del cliente viene en X-Forwarded-For
+// (sin esto, el límite de intentos de login sería uno solo para todos).
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -59,7 +65,8 @@ app.use("/api/caja", cajaRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 
-setupSwagger(app);
+// La documentación de la API no se publica en producción.
+if (process.env.NODE_ENV !== "production") setupSwagger(app);
 app.use(errorHandler);
 
 export const startServer = async () => {
@@ -68,6 +75,7 @@ export const startServer = async () => {
       dbName: config.DB_NAME,
     });
     logger.info("Conexión a DB establecida");
+    avisarSiSecretoDebil();
 
     const server = app.listen(config.PORT, () => {
       logger.info(`Server escuchando en puerto ${config.PORT}`);

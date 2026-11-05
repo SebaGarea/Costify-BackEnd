@@ -3,9 +3,18 @@ import { usuariosService, invitacionesService } from "../services/index.js";
 import { generaHash, validaHash } from "../config/index.js";
 import { UsuarioDTO } from "../dtos/usuarios.dto.js";
 
-import jwt from "jsonwebtoken";
+import passport from "passport";
 import dotenv from "dotenv";
 import logger from "../config/logger.js";
+import {
+  firmarSesion,
+  COOKIE_STATE,
+  crearStateGoogle,
+  leerStateGoogle,
+  leerCookie,
+  crearCodigoGoogle,
+  canjearCodigoGoogle,
+} from "../services/authTokens.service.js";
 dotenv.config();
 
 const sanitizeUser = (usuario) => {
@@ -14,6 +23,9 @@ const sanitizeUser = (usuario) => {
     password,
     verificationToken,
     verificationExpires,
+    googleId,
+    passwordChangedAt,
+    invitationCode,
     __v,
     ...rest
   } = usuario;
@@ -52,6 +64,20 @@ const getAllowedFrontendOrigins = () => {
 
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
+
+const opcionesCookieState = (maxAge) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/api/usuarios/auth/google",
+  maxAge,
+});
+
+const origenPermitido = (valor) => {
+  const permitidos = getAllowedFrontendOrigins();
+  const origen = normalizeOrigin(valor);
+  return permitidos.includes(origen) ? origen : permitidos[0];
+};
 
 const buildFrontendRedirect = (path = "") => {
   const base = getAllowedFrontendOrigins()[0];
@@ -105,9 +131,10 @@ export class UsuariosController {
       let usuarioActualizado = await usuariosService.updateUsuario(id, {
         first_name,
         last_name,
-        email,       
+        email: email ? String(email).trim().toLowerCase() : undefined,
         password,
         role,
+        ...(password ? { passwordChangedAt: new Date() } : {}),
       });
 
       if (!usuarioActualizado) {
@@ -135,6 +162,9 @@ export class UsuariosController {
   static async deleteUsuario(req, res, next) {
     let { id } = req.params;
     try {
+      if (String(req.user?._id) === String(id)) {
+        return res.status(400).json({ mensaje: "No podés eliminar tu propio usuario" });
+      }
       let usuario = await usuariosService.delete(id);
       if (!usuario) {
       logger.warn('Intento de eliminar usuario no existente', { id });
@@ -155,32 +185,68 @@ export class UsuariosController {
   }
 
   static async loginUsuario(req, res) {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "8h",
-    });
+    const token = firmarSesion(req.user);
     logger.info('Login local exitoso', { id: req.user._id });
     const usuario = sanitizeUser(req.user);
     res.json({ mensaje: "Login local exitoso", token, usuario });
   }
 
-  static async loginGoogleCallback(req, res) {
+  // Inicio del login con Google: se guarda un nonce en una cookie httpOnly y
+  // viaja firmado (con el origen del frontend) en el "state" de OAuth.
+  static iniciarGoogle(req, res, next) {
+    const origen = origenPermitido(req.query.redirect);
+    if (!passport._strategy("google")) {
+      return res.redirect(`${origen}/login?error=google_no_disponible`);
+    }
+    const { nonce, state, maxAge } = crearStateGoogle(origen);
+    res.cookie(COOKIE_STATE, nonce, opcionesCookieState(maxAge));
+    return passport.authenticate("google", {
+      session: false,
+      scope: ["profile", "email"],
+      prompt: "select_account",
+      state,
+    })(req, res, next);
+  }
+
+  // Vuelta de Google: nunca se manda el token en la URL. Se redirige con un
+  // código de un solo uso (en el #, que no llega a ningún servidor ni a los logs).
+  static loginGoogleCallback(req, res, next) {
+    const nonce = leerCookie(req, COOKIE_STATE);
+    res.clearCookie(COOKIE_STATE, opcionesCookieState(undefined));
+    const datosState = leerStateGoogle(req.query.state, nonce);
+    const origen = origenPermitido(datosState?.origen);
+    const volverConError = (codigo) => res.redirect(`${origen}/login?error=${codigo}`);
+
+    if (!datosState) {
+      logger.warn("Login con Google con state inválido o vencido");
+      return volverConError("google_sesion_vencida");
+    }
+    if (req.query.error) return volverConError("google_cancelado");
+
+    passport.authenticate("google", { session: false }, (error, usuario, info) => {
+      if (error) {
+        logger.error("Error en login con Google", { error: error.message });
+        return volverConError("google_error");
+      }
+      if (!usuario) return volverConError(`google_${info?.motivo || "sin_cuenta"}`);
+      logger.info("Login con Google exitoso", { id: usuario._id });
+      return res.redirect(`${origen}/login#codigo=${crearCodigoGoogle(usuario._id)}`);
+    })(req, res, next);
+  }
+
+  // El frontend canjea el código de un solo uso por el token de sesión.
+  static async canjearGoogle(req, res) {
     try {
-      const token = jwt.sign(
-        { id: req.user._id, role: req.user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-      );
-      logger.info('Login con Google exitoso', { id: req.user._id });
-      const allowedOrigins = getAllowedFrontendOrigins();
-      const fallbackOrigin = allowedOrigins[0];
-      const requestedOrigin = normalizeOrigin(req.query.state);
-      const targetOrigin = allowedOrigins.includes(requestedOrigin)
-        ? requestedOrigin
-        : fallbackOrigin;
-      return res.redirect(`${targetOrigin}/?token=${token}`);
+      const usuarioId = canjearCodigoGoogle(req.body?.codigo);
+      if (!usuarioId) {
+        return res.status(400).json({ mensaje: "El ingreso con Google venció. Probá de nuevo." });
+      }
+      const usuario = await usuariosService.getUsuariosById(usuarioId);
+      if (!usuario) return res.status(400).json({ mensaje: "Usuario no encontrado" });
+      return res.json({ token: firmarSesion(usuario), usuario: sanitizeUser(usuario) });
     } catch (error) {
-      logger.error('Error en loginGoogleCallback', { error: error.message, stack: error.stack });
-      res.status(500).json({ error: "Error en login con Google" });
+      logger.error("Error al canjear el código de Google", { error: error.message });
+      return res.status(500).json({ mensaje: "No se pudo completar el ingreso con Google" });
     }
   }
 
@@ -254,7 +320,7 @@ export class UsuariosController {
     const { email, password } = req.body;
   
     try {
-      let usuario = await usuariosService.usuariosDAO.getBy({ email });
+      let usuario = await usuariosService.usuariosDAO.getBy({ email: String(email).trim().toLowerCase() });
       if (!usuario) {
         return res.status(404).json({ error: "Usuario no encontrado" });
       }
@@ -263,6 +329,7 @@ export class UsuariosController {
       const passwordHash = generaHash(password);
       await usuariosService.usuariosDAO.update(usuario._id, {
         password: passwordHash,
+        passwordChangedAt: new Date(),
       });
       return res
         .status(200)
@@ -270,7 +337,7 @@ export class UsuariosController {
     } catch (error) {
       return res
         .status(500)
-        .json({ error: `Error al actualizar contraseña: ${error.message}` });
+        .json({ error: "Error al actualizar la contraseña" });
     }
   }
 
@@ -292,12 +359,14 @@ export class UsuariosController {
         return res.status(400).json({ error: "La contraseña actual no es correcta" });
       }
 
-      await usuariosService.usuariosDAO.update(userId, {
+      const actualizado = await usuariosService.usuariosDAO.update(userId, {
         password: generaHash(newPassword),
+        passwordChangedAt: new Date(),
       });
 
+      // Se cierran las demás sesiones; esta sigue con un token nuevo.
       logger.info("Contraseña actualizada", { id: userId });
-      return res.status(200).json({ mensaje: "Contraseña actualizada correctamente" });
+      return res.status(200).json({ mensaje: "Contraseña actualizada correctamente", token: firmarSesion(actualizado) });
     } catch (error) {
       logger.error("Error al cambiar contraseña", { error: error.message, stack: error.stack });
       return res.status(500).json({ error: "No se pudo actualizar la contraseña" });

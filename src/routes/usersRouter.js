@@ -13,116 +13,94 @@ import {
   validacionPerfil,
 } from "../middlewares/validations/index.js";
 
-const authLimiter = rateLimit({
+const limitador = (max, mensaje) =>
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: mensaje, mensaje },
+  });
+
+// Login: 10 intentos fallidos cada 15 minutos por IP (los exitosos no cuentan).
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Demasiados intentos. Intentá de nuevo en 15 minutos." },
+  message: {
+    error: "Demasiados intentos. Intentá de nuevo en 15 minutos.",
+    mensaje: "Demasiados intentos. Intentá de nuevo en 15 minutos.",
+  },
 });
+const authLimiter = limitador(10, "Demasiados intentos. Intentá de nuevo en 15 minutos.");
+const googleLimiter = limitador(30, "Demasiados intentos con Google. Intentá de nuevo en 15 minutos.");
+
+const auth = passport.authenticate("jwt", { session: false });
 
 export const router = express.Router();
 
-const defaultFrontendBase = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
-
-router.get("/auth/google", (req, res, next) => {
-  const redirect = req.query.redirect ? encodeURIComponent(req.query.redirect) : "";
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    state: redirect,
-  })(req, res, next);
-});
-
-router.get(
-  "/auth/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: `${defaultFrontendBase}/login`,
-  }),
-  UsuariosController.loginGoogleCallback
-);
+router.get("/auth/google", googleLimiter, UsuariosController.iniciarGoogle);
+router.get("/auth/google/callback", googleLimiter, UsuariosController.loginGoogleCallback);
+router.post("/auth/google/canjear", googleLimiter, UsuariosController.canjearGoogle);
 
 router.post(
   "/registro",
+  authLimiter,
   validacionRegistro,
   UsuariosController.registroUsuario
 );
 
-router.get("/verify-email", UsuariosController.verifyEmail);
+router.get("/verify-email", authLimiter, UsuariosController.verifyEmail);
 
-router.get(
-  "/current",
-  passport.authenticate("jwt", { session: false }),
-  UsuariosController.currentUsuario
-);
+router.get("/current", auth, UsuariosController.currentUsuario);
 
-router.get(
-  "/",
-  passport.authenticate("jwt", { session: false }),
-  UsuariosController.getUsuarios
-);
+router.get("/", auth, requireRole("admin"), UsuariosController.getUsuarios);
 
 router.post(
   "/invitaciones",
-  passport.authenticate("jwt", { session: false }),
+  auth,
   requireRole("admin"),
   UsuariosController.crearInvitacion
 );
 
 router.get(
   "/invitaciones",
-  passport.authenticate("jwt", { session: false }),
+  auth,
   requireRole("admin"),
   UsuariosController.listarInvitaciones
 );
 
-router.put(
-  "/perfil",
-  passport.authenticate("jwt", { session: false }),
-  validacionPerfil,
-  UsuariosController.updatePerfil
-);
-
-router.get(
-  "/:id",
-  validacionIdUser,
-  passport.authenticate("jwt", { session: false }),
-  UsuariosController.getUsuariosById
-);
-
-router.put(
-  "/:id",
-  validacionUpdate,
-  passport.authenticate("jwt", { session: false }),
-  UsuariosController.updateUsuario
-);
-
-router.delete(
-  "/:id",
-  validacionIdUser,
-  passport.authenticate("jwt", { session: false }),
-  UsuariosController.deleteUsuario
-);
+router.put("/perfil", auth, validacionPerfil, UsuariosController.updatePerfil);
 
 router.post(
   "/login",
-  authLimiter,
+  loginLimiter,
   validacionLogin,
   passport.authenticate("login", { session: false }),
   UsuariosController.loginUsuario
 );
 
+// Fijar la contraseña de otro usuario: solo un admin.
 router.post(
   "/set-password",
   authLimiter,
-  passport.authenticate("jwt", { session: false }),
+  auth,
+  requireRole("admin"),
   validacionSetPassword,
   UsuariosController.setPassword
 );
 
 router.post(
   "/change-password",
+  authLimiter,
+  auth,
   validacionChangePassword,
-  passport.authenticate("jwt", { session: false }),
   UsuariosController.changePassword
 );
+
+// Administración de usuarios: solo admin (el propio usuario usa /current y /perfil).
+router.get("/:id", validacionIdUser, auth, requireRole("admin"), UsuariosController.getUsuariosById);
+router.put("/:id", validacionUpdate, auth, requireRole("admin"), UsuariosController.updateUsuario);
+router.delete("/:id", validacionIdUser, auth, requireRole("admin"), UsuariosController.deleteUsuario);
