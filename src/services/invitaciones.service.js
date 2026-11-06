@@ -9,7 +9,7 @@ export class InvitacionesService {
   }
 
   generateCode() {
-    return crypto.randomBytes(4).toString("hex").toUpperCase();
+    return crypto.randomBytes(6).toString("hex").toUpperCase();
   }
 
   async createInvitation({ email, role = "user", maxUses = 1, expiresAt }, createdBy) {

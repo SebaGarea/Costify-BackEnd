@@ -42,6 +42,11 @@ export const usuariosModelo = mongoose.model('users', new mongoose.Schema({
     googleId: {
         type: String
     },
+    // Las sesiones emitidas antes de esta fecha dejan de valer.
+    passwordChangedAt: {
+        type: Date,
+        default: null
+    },
     avatar: {
         type: String,
         maxlength: 500,
