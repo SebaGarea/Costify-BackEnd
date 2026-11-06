@@ -14,6 +14,12 @@
 
 **📚 Documentación de la API en vivo:** [costify.duckdns.org/api-docs](https://costify.duckdns.org/api-docs) · **🖥️ App:** [elportalherreria.vercel.app](https://elportalherreria.vercel.app) (acceso por invitación)
 
+<p align="center">
+  <a href="https://costify-fron-end-ebw7.vercel.app"><img src="https://img.shields.io/badge/%E2%96%B6%20Probar%20la%20demo-14b8a6?style=for-the-badge" alt="Probar la demo"></a>
+</p>
+
+> **Demo pública:** usuario `demo@costify.com` · contraseña `Demo1234` (ya vienen cargados en el login). Tiene datos ficticios que se reinician todas las noches. El asistente de IA está desactivado en la demo para no consumir cuota: responde explicando qué hace.
+
 ---
 
 ## 🧭 ¿Qué es Costify?
