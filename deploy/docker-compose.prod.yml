@@ -1,9 +1,14 @@
 # ============================================================
 #  Costify Backend — Deploy de producción (Oracle Cloud / cualquier VM)
 # ============================================================
-# Levanta 2 contenedores:
-#   - api    -> tu backend Node (puerto interno 8080, NO expuesto a internet)
-#   - caddy  -> reverse proxy con HTTPS automático (Let's Encrypt) en 80/443
+# Levanta 4 contenedores:
+#   - api        -> tu backend Node (puerto interno 8080, NO expuesto a internet)
+#   - caddy      -> reverse proxy con HTTPS automático (Let's Encrypt) en 80/443
+#   - api-demo   -> la DEMO pública (misma imagen, DEMO_MODE=true, datos ficticios)
+#   - mongo-demo -> base de la demo, solo en la red interna "demo"
+#
+# La demo está AISLADA de producción: usa su propia base (mongo-demo), no
+# recibe .env.production y no tiene claves de Gemini, Google, MP ni Cloudinary.
 #
 # Uso (parado en la carpeta deploy/):
 #   docker compose -f docker-compose.prod.yml up -d --build
@@ -25,6 +30,53 @@ services:
     networks:
       - costify
 
+  # ---------------- DEMO pública (para reclutadores) ----------------
+  api-demo:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - path: .env.demo         # solo JWT_SECRET y CORS_ORIGINS de la demo
+        required: false
+    environment:
+      # Fijados acá a propósito: aunque falte o se edite mal .env.demo,
+      # la demo NUNCA puede apuntar a la base real ni usar claves pagas.
+      DEMO_MODE: "true"
+      NODE_ENV: production
+      PORT: "8080"
+      MONGO_URL: mongodb://mongo-demo:27017
+      DB_NAME: costify_demo
+      API_DOCS: "off"
+      GEMINI_API_KEY: ""
+      MP_ACCESS_TOKEN: ""
+      MP_WEBHOOK_SECRET: ""
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      CLOUDINARY_CLOUD_NAME: ""
+      CLOUDINARY_API_KEY: ""
+      CLOUDINARY_API_SECRET: ""
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+    expose:
+      - "8080"
+    mem_limit: 220m
+    depends_on:
+      - mongo-demo
+    networks:
+      - costify                 # para que caddy le llegue
+      - demo                    # para hablar con mongo-demo
+
+  mongo-demo:
+    image: mongo:7
+    restart: always
+    command: ["--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
+    mem_limit: 350m
+    volumes:
+      - mongo-demo-data:/data/db
+    networks:
+      - demo                    # sin puertos publicados: inaccesible desde afuera
+
   caddy:
     image: caddy:2-alpine
     restart: always
@@ -44,7 +96,10 @@ services:
 
 networks:
   costify:
+  demo:
+    internal: true              # la base de la demo no sale a internet
 
 volumes:
   caddy-data:
   caddy-config:
+  mongo-demo-data:

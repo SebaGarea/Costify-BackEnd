@@ -4,6 +4,20 @@ import { toolDeclarations, executeTool, ENTIDAD_POR_TOOL } from "../services/her
 import { configuracionService } from "../services/configuracion.service.js";
 import { ChatMessageModel } from "../dao/models/index.js";
 import logger from "../config/logger.js";
+import { DEMO_MODE, RESPUESTA_IA_DEMO } from "../config/demo.js";
+
+// En la demo el asistente explica qué hace, "escribiendo" de a poco, sin llamar a Gemini.
+const responderDemo = async (res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("X-Accel-Buffering", "no");
+  const partes = RESPUESTA_IA_DEMO.match(/[\s\S]{1,24}/g) || [];
+  for (const parte of partes) {
+    res.write(parte);
+    await new Promise((ok) => setTimeout(ok, 15));
+  }
+  res.end();
+};
 
 const HISTORIAL_MAX = 100; // mensajes a conservar por usuario
 
@@ -88,6 +102,7 @@ export const chatController = {
         error.status = 400;
         return next(error);
       }
+      if (DEMO_MODE) return responderDemo(res);
 
       const system = await buildSystem();
 

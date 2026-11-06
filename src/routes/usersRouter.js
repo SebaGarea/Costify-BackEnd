@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import {  UsuariosController  } from "../controllers/index.js";
 import passport from "passport";
 import { requireRole } from "../middlewares/auth/requireRole.js";
+import { bloquearEnDemo } from "../config/demo.js";
 import {
   validacionRegistro,
   validacionLogin,
@@ -96,6 +97,7 @@ router.post(
   "/change-password",
   authLimiter,
   auth,
+  bloquearEnDemo("En la demo no se puede cambiar la contraseña."),
   validacionChangePassword,
   UsuariosController.changePassword
 );
