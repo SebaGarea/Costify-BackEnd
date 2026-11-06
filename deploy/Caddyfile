@@ -17,3 +17,14 @@
 		output stdout
 	}
 }
+
+# Demo pública: mismo backend en modo demo, con su propia base de datos.
+{$DEMO_DOMAIN:demo.costify.duckdns.org} {
+	reverse_proxy api-demo:8080
+
+	encode gzip
+
+	log {
+		output stdout
+	}
+}

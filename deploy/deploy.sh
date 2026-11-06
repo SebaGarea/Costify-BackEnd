@@ -40,6 +40,12 @@ for i in $(seq 1 10); do
   sleep 3
 done
 
+if curl -fsS https://demo.costify.duckdns.org/health > /dev/null 2>&1; then
+  echo "✅ Demo OK — https://demo.costify.duckdns.org responde."
+else
+  echo "ℹ️  La demo no respondió (si es el primer deploy, revisá .env.demo y corré ./reset-demo.sh)."
+fi
+
 if [ "$OK" -eq 1 ]; then
   echo "✅ Deploy OK — el backend responde con HTTPS."
 else
