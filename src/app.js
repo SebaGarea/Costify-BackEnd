@@ -65,8 +65,7 @@ app.use("/api/caja", cajaRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date() }));
 
-// La documentación de la API no se publica en producción.
-if (process.env.NODE_ENV !== "production") setupSwagger(app);
+setupSwagger(app);
 app.use(errorHandler);
 
 export const startServer = async () => {

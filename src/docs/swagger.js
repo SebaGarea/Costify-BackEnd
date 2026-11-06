@@ -10,8 +10,8 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:8080/api",
-      description: "Servidor local",
+      url: "/api",
+      description: "Este servidor",
     },
   ],
   components: {
@@ -35,7 +35,17 @@ export const swaggerOptions = {
   ],
 };
 
+// La documentación es pública (sirve para mostrar el proyecto) pero de solo
+// lectura: no se pueden ejecutar pedidos desde ahí. Con API_DOCS=off se oculta.
 export function setupSwagger(app) {
+  if (String(process.env.API_DOCS || "").toLowerCase() === "off") return;
   const swaggerSpec = swaggerJSDoc(swaggerOptions);
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customSiteTitle: "Costify API",
+      swaggerOptions: { supportedSubmitMethods: [] },
+    })
+  );
 }
