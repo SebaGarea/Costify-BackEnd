@@ -6,8 +6,16 @@
 ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
 ![Gemini](https://img.shields.io/badge/IA-Google_Gemini-8E75B2?logo=google&logoColor=white)
-![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black)
+[![Swagger](https://img.shields.io/badge/Docs-Swagger-85EA2D?logo=swagger&logoColor=black)](https://costify.duckdns.org/api-docs)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+
+---
+
+## 📚 Documentación de la API en vivo
+
+**[👉 costify.duckdns.org/api-docs](https://costify.duckdns.org/api-docs)**
+
+Documentación OpenAPI/Swagger de la API en producción: todos los endpoints con sus parámetros, cuerpos y respuestas. Es de solo lectura: las rutas protegidas requieren JWT.
 
 ---
 
@@ -40,7 +48,7 @@
 - **Autenticación y autorización** — Passport (local, JWT y Google OAuth 2.0).
 - **Validación profesional** de datos con [express-validator](https://express-validator.github.io/).
 - **Seguridad HTTP** con [Helmet](https://github.com/helmetjs/helmet) y rate limiting.
-- **Documentación interactiva** con Swagger.
+- **Documentación** con Swagger/OpenAPI, publicada en [costify.duckdns.org/api-docs](https://costify.duckdns.org/api-docs).
 - **Logging estructurado** con Winston.
 - **Emails** transaccionales (invitaciones) con Nodemailer.
 
@@ -207,7 +215,7 @@ DELETE /api/chat/history    # limpiar historial
 GET    /api/chat/resumen    # resumen proactivo del negocio
 ```
 
-> Las rutas protegidas requieren JWT. Consultá Swagger (`/api-docs`) para parámetros y respuestas.
+> Las rutas protegidas requieren JWT. Consultá la [documentación Swagger](https://costify.duckdns.org/api-docs) para parámetros y respuestas.
 
 ---
 
