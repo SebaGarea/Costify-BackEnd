@@ -285,7 +285,7 @@ const run = async () => {
   [[-74, 260000, efectivo], [-60, 145000, mpCuenta], [-45, 610000, efectivo], [-33, 238000, efectivo], [-18, 290000, mpCuenta], [-11, 180000, efectivo], [-5, 150000, mpCuenta], [-1, 145000, mpCuenta]]
     .forEach(([d, m, c]) => movimientos.push(mov("ingreso", m, d, c, cat.ventas, "Cobro de venta")));
   // Plata de Mercado Libre que todavía no se liberó
-  movimientos.push(mov("ingreso", 132000, -1, mpCuenta, cat.ventas, "Venta Mercado Libre: mesa ratona", { liberacion: dia(8) }));
+  movimientos.push(mov("ingreso", 132000, -1, mpCuenta, cat.ventas, "Venta Mercado Libre: mesa ratona"));
   // Gastos del taller
   [
     [-80, 185000, efectivo, cat.materiales, "Caños y chapa (corralón)"],

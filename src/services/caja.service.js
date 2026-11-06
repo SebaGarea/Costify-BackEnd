@@ -192,7 +192,10 @@ const calcularMovimientosPorCuenta = async () => {
 };
 
 // Plata de Mercado Pago cobrada pero todavía no liberada (neto de comisiones).
-const calcularALiberar = async () => {
+// En modo manual no existe "a liberar": los saldos solo cambian por lo que se
+// carga a mano (ingresos, gastos, compras, ajustes), nunca por el paso del tiempo.
+export const calcularALiberar = async ({ forzar = false } = {}) => {
+  if (!MP_SINCRONIZACION_ACTIVA && !forzar) return new Map();
   const filas = await MovimientoModel.aggregate([
     { $match: { liberacion: { $gt: new Date() }, tipo: { $in: ["ingreso", "egreso"] } } },
     {
